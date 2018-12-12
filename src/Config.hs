@@ -1,12 +1,11 @@
 {-# LANGUAGE DeriveGeneric #-}
 module Config where
 
-import Data.Yaml
-import Data.List
-import GHC.Generics
+import Data.Yaml (decodeFileThrow, FromJSON)
+import Data.List (find)
+import GHC.Generics (Generic)
 import Foreign.C.Types (CULong)
-import Data.Word
-
+import Data.Word (Word64)
 
 data ServerConfig = ServerConfig { port :: Int } deriving (Show, Generic)
 instance FromJSON ServerConfig
@@ -32,5 +31,5 @@ instance FromJSON Config
 readConfig :: FilePath -> IO Config
 readConfig = decodeFileThrow
 
-findKeyByHash :: String -> [KeysConfig] -> Maybe KeysConfig
-findKeyByHash h xs = find (\x -> h == (publicKeyHash x)) xs
+findKeyByHash :: Config -> String -> Maybe KeysConfig
+findKeyByHash xs h = find (\x -> h == (publicKeyHash x)) (keys xs)

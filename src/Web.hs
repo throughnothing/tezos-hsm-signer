@@ -37,9 +37,11 @@ server hsm = authorizedKeys
     getKeyHash :: String -> Handler String
     getKeyHash hash = do
       hasKey <- liftIO $ HSM.hasKey hsm hash
-      if hasKey then return $ "\"" ++ hash ++ "\"" else throwError err404
+      if hasKey
+        then return $ "\"" ++ hash ++ "\""
+        else throwError err404
 
-    -- | TODO: Get request body in quotes
+    -- | TODO: Get/Parse request body in quotes
     signMessage :: String -> String -> Handler String
     signMessage hash dat = do
         signMaybe <- liftIO $ HSM.sign hsm hash (pack dat)

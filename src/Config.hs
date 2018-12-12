@@ -1,7 +1,8 @@
 {-# LANGUAGE DeriveGeneric #-}
 module Config where
 
-import Data.Yaml (decodeFileThrow, FromJSON)
+import Control.Exception (throw)
+import Data.Yaml (decodeFileEither, FromJSON)
 import Data.List (find)
 import GHC.Generics (Generic)
 import Foreign.C.Types (CULong)
@@ -28,8 +29,11 @@ data Config = Config
   } deriving (Show, Generic)
 instance FromJSON Config
 
-readConfig :: FilePath -> IO Config
-readConfig = decodeFileThrow
+readConfig :: FromJSON a => FilePath -> IO a
+readConfig f = decodeFileEither f >>= handle
+  where
+    handle (Left e) = pure $ throw e
+    handle (Right c) = pure c
 
 findKeyByHash :: Config -> String -> Maybe KeysConfig
-findKeyByHash xs h = find (h == publicKeyHash) (keys xs)
+findKeyByHash xs h = find (\x -> h == publicKeyHash x) (keys xs)

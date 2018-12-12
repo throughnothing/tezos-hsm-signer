@@ -1,0 +1,6 @@
+resolver: lts-12.21
+packages:
+- .
+extra-deps:
+- hspkcs11-0.7
+- base58-bytestring-0.1.0

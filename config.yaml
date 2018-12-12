@@ -1,0 +1,9 @@
+server:
+  port: 6732
+hsm:
+  libPath: /usr/local/lib/softhsm/libsofthsm2.so
+keys:
+- keyName: remote
+  publicKeyHash: tz1bvNWdJWfnt8Pbr3ZTZ2bFHSvLWvvufxSY
+  publicKey: edpktzHVJM2ZR2Bd3WitwwjdiZBZey9rjCag2kNNX7RCm3NFMbMYcb
+  hsmSlot: 1454497325 

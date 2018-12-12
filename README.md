@@ -15,3 +15,11 @@ changes / updates to the token.
 ```
 softhsm2-util --init-token --slot 0 --label "Test Token 1"
 ```
+
+## Building and Running
+
+```
+# If you need stack: brew install stack on OS X
+stack build
+stack exec haskell-pkcs-exe
+```

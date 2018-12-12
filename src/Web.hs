@@ -11,7 +11,7 @@ import Network.Wai.Handler.Warp
 import Data.ByteString.Char8 (pack, unpack, ByteString)
 
 import qualified Config as C
-import qualified HSM as HSM
+import qualified HSM
 
 type SignerAPI =
   "auhtorized_keys" :> Get '[PlainText, JSON] String
@@ -37,9 +37,7 @@ server hsm = authorizedKeys
     getKeyHash :: String -> Handler String
     getKeyHash hash = do
       hasKey <- liftIO $ HSM.hasKey hsm hash
-      case hasKey of
-        True -> return $ "\"" ++ hash ++ "\""
-        False -> throwError err404
+      if hasKey then return $ "\"" ++ hash ++ "\"" else throwError err404
 
     -- | TODO: Get request body in quotes
     signMessage :: String -> String -> Handler String
@@ -63,5 +61,5 @@ serveSignerAPI port h = run port $ logMiddleware $ signerApp h
 logMiddleware :: Middleware
 logMiddleware innerApp request respond = do
   -- | TODO: Structure this log better
-  putStrLn $ show request
+  print request
   innerApp request respond

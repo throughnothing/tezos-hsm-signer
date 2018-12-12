@@ -11,6 +11,7 @@ import Foreign.C.Types (CULong)
 import Data.Word (Word64)
 import Unsafe.Coerce (unsafeCoerce)
 import Data.Hex as Hex
+import Data.Maybe (isJust)
 
 import qualified Config as C
 
@@ -33,36 +34,35 @@ data HSM f = HSM
 withHsmIO :: LibraryPath -> UserPin -> (KeyHash -> Maybe C.KeysConfig) -> (HSM IO -> IO a) -> IO a
 withHsmIO libPath pin find f = bracket
     (PKCS.loadLibrary libPath)
-    (\lib -> PKCS.releaseLibrary lib)
-    (\lib -> f $ _hsm lib)
+    PKCS.releaseLibrary
+    (f . _hsm)
     where
         _hsm l = HSM
             { sign = _sign l
             , hasKey = _hasKey l
             }
 
-        _sign lib keyHash dat = do
+        _sign lib keyHash dat =
             withPrivKey lib pin (find keyHash) (\privKey -> do
                 signed <- PKCS.sign (PKCS.simpleMech PKCS.Ecdsa) privKey dat Nothing
                 pure $ Hex.hex signed)
 
-        _hasKey lib keyHash = fmap (maybe False (const True)) $ do
-            withPrivKey lib pin (find keyHash) (const $ pure True)
+        _hasKey lib keyHash = isJust <$> withPrivKey lib pin (find keyHash) (const $ pure True)
 
 
 withPrivKey :: PKCS.Library -> UserPin -> Maybe C.KeysConfig -> (PKCS.Object -> IO a) -> IO (Maybe a)
 withPrivKey lib pin m f = maybe
     (pure Nothing)
-    (\kc -> do
-        withSession' False lib (C.hsmSlot kc) pin (\sess -> do
-            objs <- PKCS.findObjects sess [PKCS.Class PKCS.PrivateKey, PKCS.Label (C.keyName kc)]
-            case objs of
-                privKey:xs -> fmap Just (f privKey)
-                [] ->  pure Nothing))
+    (\kc -> withSession' False lib (C.hsmSlot kc) pin
+            (\sess -> do
+                objs <- PKCS.findObjects sess [PKCS.Class PKCS.PrivateKey, PKCS.Label (C.keyName kc)]
+                case objs of
+                    privKey:xs -> fmap Just (f privKey)
+                    [] ->  pure Nothing))
     m
 
 withSession' :: Bool -> PKCS.Library -> SlotId -> UserPin -> (PKCS.Session -> IO a) -> IO a
-withSession' writeable lib slotId pin f = do
+withSession' writeable lib slotId pin f =
     PKCS.withSession lib (unsafeCoerce slotId :: CULong) writeable
         (\sess -> bracket
             (PKCS.login sess PKCS.User (pack pin))

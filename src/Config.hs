@@ -7,10 +7,10 @@ import GHC.Generics (Generic)
 import Foreign.C.Types (CULong)
 import Data.Word (Word64)
 
-data ServerConfig = ServerConfig { port :: Int } deriving (Show, Generic)
+newtype ServerConfig = ServerConfig { port :: Int } deriving (Show, Generic)
 instance FromJSON ServerConfig
 
-data HsmConfig = HsmConfig { libPath :: FilePath } deriving (Show, Generic)
+newtype HsmConfig = HsmConfig { libPath :: FilePath } deriving (Show, Generic)
 instance FromJSON HsmConfig
 
 data KeysConfig = KeysConfig
@@ -32,4 +32,4 @@ readConfig :: FilePath -> IO Config
 readConfig = decodeFileThrow
 
 findKeyByHash :: Config -> String -> Maybe KeysConfig
-findKeyByHash xs h = find (\x -> h == (publicKeyHash x)) (keys xs)
+findKeyByHash xs h = find (h == publicKeyHash) (keys xs)

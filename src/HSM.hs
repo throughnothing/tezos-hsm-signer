@@ -3,7 +3,7 @@ module HSM where
     -- , withHsmIO
     -- ) where
 
-import Control.Exception (bracket)
+import Control.Exception (bracket, Exception, throw)
 import Data.ByteString.Char8 (pack, unpack, ByteString)
 import qualified Data.ByteString as BS
 import Foreign.C.Types (CULong)
@@ -29,9 +29,12 @@ type SignedMessage = ByteString
 type PublicKey = String
 
 data HSM f = HSM
-    { sign   :: KeyHash -> Data -> f (Maybe E.Base58String)
-    , getPublicKey :: KeyHash -> f (Maybe PublicKey)
+    { sign   :: KeyHash -> Data -> f E.Base58String
+    , getPublicKey :: KeyHash -> f PublicKey
     }
+
+data HSMError = KeyNotFound deriving (Show)
+instance Exception HSMError
 
 withHsmIO :: LibraryPath -> UserPin -> (KeyHash -> Maybe C.KeysConfig) -> (HSM IO -> IO a) -> IO a
 withHsmIO libPath pin find f = bracket
@@ -52,16 +55,15 @@ withHsmIO libPath pin find f = bracket
 
         _getPublicKey lib keyHash = withPrivKey lib pin (find keyHash) (\kc _ -> pure $ C.publicKey kc)
 
-
-withPrivKey :: PKCS.Library -> UserPin -> Maybe C.KeysConfig -> (C.KeysConfig -> PKCS.Object -> IO a) -> IO (Maybe a)
+withPrivKey :: PKCS.Library -> UserPin -> Maybe C.KeysConfig -> (C.KeysConfig -> PKCS.Object -> IO a) -> IO a
 withPrivKey lib pin m f = maybe
-    (pure Nothing)
+    (pure $ throw KeyNotFound)
     (\kc -> withSession' False lib (C.hsmSlot kc) pin
             (\sess -> do
                 objs <- PKCS.findObjects sess [PKCS.Class PKCS.PrivateKey, PKCS.Label (C.keyName kc)]
                 case objs of
-                    privKey:xs -> fmap Just (f kc privKey)
-                    [] ->  pure Nothing))
+                    privKey:xs -> f kc privKey
+                    [] ->  pure $ throw KeyNotFound))
     m
 
 withSession' :: Bool -> PKCS.Library -> SlotId -> UserPin -> (PKCS.Session -> IO a) -> IO a

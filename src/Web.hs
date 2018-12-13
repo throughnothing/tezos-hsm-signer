@@ -4,6 +4,7 @@
 {-# LANGUAGE DeriveGeneric #-}
 module Web (serveSignerAPI) where
 
+import Control.Exception (try)
 import Control.Monad.IO.Class (liftIO)
 import Data.Aeson (FromJSON, ToJSON)
 import GHC.Generics (Generic)

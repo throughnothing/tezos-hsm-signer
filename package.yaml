@@ -35,6 +35,7 @@ dependencies:
 - containers
 - convertible
 - aeson
+- unix
 
 library:
   source-dirs: src

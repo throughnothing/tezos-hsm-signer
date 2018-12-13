@@ -29,12 +29,22 @@ type SignedMessage = ByteString
 type PublicKey = String
 
 data HSM f = HSM
-    { sign   :: KeyHash -> Data -> f E.Base58String
+    { sign   :: KeyHash -> ByteString -> f ByteString
     , getPublicKey :: KeyHash -> f PublicKey
     }
 
 data HSMError = KeyNotFound deriving (Show)
 instance Exception HSMError
+
+signPrepTZ :: ByteString -> ByteString
+signPrepTZ x = x
+
+signPostTZ :: ByteString -> ByteString
+signPostTZ x = x
+
+signTZ :: Functor f => (ByteString -> f ByteString) -> ByteString -> f E.Base58String
+signTZ f i = E.toBase58Str . signPostTZ <$> f (signPrepTZ i)
+
 
 withHsmIO :: LibraryPath -> UserPin -> (KeyHash -> Maybe C.KeysConfig) -> (HSM IO -> IO a) -> IO a
 withHsmIO libPath pin find f = bracket
@@ -47,11 +57,8 @@ withHsmIO libPath pin find f = bracket
             , getPublicKey = _getPublicKey l
             }
 
-        _sign lib keyHash dat =
-            let dataToSign =  E.blake2b $ E.strToHex dat in
-                withPrivKey lib pin (find keyHash) (\_ privKey -> do
-                    signed <- PKCS.sign (PKCS.simpleMech PKCS.Ecdsa) privKey dataToSign Nothing
-                    pure $ E.toBase58Str signed)
+        _sign lib keyHash dat = withPrivKey lib pin (find keyHash)
+            (\_ privKey -> PKCS.sign (PKCS.simpleMech PKCS.Ecdsa) privKey dat Nothing)
 
         _getPublicKey lib keyHash = withPrivKey lib pin (find keyHash) (\kc _ -> pure $ C.publicKey kc)
 

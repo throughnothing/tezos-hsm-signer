@@ -13,19 +13,14 @@ import Servant.API
 import Network.Wai
 import Network.Wai.Handler.Warp
 import Data.ByteString.Char8 (pack, unpack, ByteString)
+import System.Posix.Process (exitImmediately)
+import System.Exit (ExitCode(..))
 
 import qualified Config as C
 import qualified HSM
 import qualified Encodings as E
 
-
-type SignerAPI =
-  "auhtorized_keys" :> Get '[PlainText, JSON] String
-  :<|> "keys" :> Get '[PlainText, JSON] String
-  :<|> "keys" :> Capture "keyHash" String :> Get '[JSON] PublicKeyRes
-  :<|> "keys" :> Capture "keyHash" String :> ReqBody '[JSON] String :> Post '[JSON] SignatureRes
-  :<|> "lock" :> Get '[PlainText, JSON] String
-
+-- | Response Types
 newtype SignatureRes = SignatureRes { signature :: E.Base58String } deriving (Show, Generic)
 instance FromJSON SignatureRes
 instance ToJSON SignatureRes
@@ -34,6 +29,13 @@ newtype PublicKeyRes = PublicKeyRes { public_key :: String } deriving (Show, Gen
 instance FromJSON PublicKeyRes
 instance ToJSON PublicKeyRes
 
+-- | API Type
+type SignerAPI =
+  "auhtorized_keys" :> Get '[PlainText, JSON] String
+  :<|> "keys" :> Get '[PlainText, JSON] String
+  :<|> "keys" :> Capture "keyHash" String :> Get '[JSON] PublicKeyRes
+  :<|> "keys" :> Capture "keyHash" String :> ReqBody '[JSON] String :> Post '[JSON] SignatureRes
+  :<|> "lock" :> Get '[PlainText, JSON] String
 
 server :: HSM.HSM IO -> Server SignerAPI
 server hsm = authorizedKeys
@@ -41,7 +43,6 @@ server hsm = authorizedKeys
   :<|> getKeyHash
   :<|> signMessage
   :<|> lock
-
   where
     authorizedKeys :: Handler String
     authorizedKeys = return "{}"
@@ -51,24 +52,24 @@ server hsm = authorizedKeys
 
     getKeyHash :: String -> Handler PublicKeyRes
     getKeyHash hash = do
-      pubKey <- liftIO $ HSM.getPublicKey hsm hash
+      pubKey <- liftIO $ try $ HSM.getPublicKey hsm hash
       case pubKey of
-        Nothing -> throwError err404
-        Just s -> return $ PublicKeyRes { public_key = s }
+        Left HSM.KeyNotFound -> throwError err404
+        Right s -> return $ PublicKeyRes { public_key = s }
 
     signMessage :: String -> String -> Handler SignatureRes
-    signMessage hash dat = 
-        case E.mkHexString dat of
-          Nothing -> throwError err400
-          Just parsedData -> do
-            signMaybe <- liftIO $ HSM.sign hsm hash parsedData
-            case signMaybe of
-              Nothing -> throwError err404
-              Just s -> return $ SignatureRes { signature = s }
+    signMessage hash dat = do
+        -- TODO: Base64 decode as well?
+        signE <- liftIO $ try $ HSM.signTZ (HSM.sign hsm hash) (pack dat)
+        case signE of
+          Left HSM.KeyNotFound -> throwError err404
+          Right s -> return $ SignatureRes { signature = s }
 
-    -- | Todo: Actually make this ext...
     lock :: Handler String
-    lock = return "Goodnight."
+    lock = liftIO $ do
+      print "Goodnight."
+      exitImmediately (ExitFailure 11)
+      pure ""
 
 signerApp :: HSM.HSM IO -> Application
 signerApp h = serve (Proxy :: Proxy SignerAPI) $ server h

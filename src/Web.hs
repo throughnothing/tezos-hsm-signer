@@ -21,13 +21,18 @@ import qualified Encodings as E
 type SignerAPI =
   "auhtorized_keys" :> Get '[PlainText, JSON] String
   :<|> "keys" :> Get '[PlainText, JSON] String
-  :<|> "keys" :> Capture "keyHash" String :> Get '[PlainText, JSON] String
+  :<|> "keys" :> Capture "keyHash" String :> Get '[JSON] PublicKeyRes
   :<|> "keys" :> Capture "keyHash" String :> ReqBody '[JSON] String :> Post '[JSON] SignatureRes
   :<|> "lock" :> Get '[PlainText, JSON] String
 
 newtype SignatureRes = SignatureRes { signature :: E.Base58String } deriving (Show, Generic)
 instance FromJSON SignatureRes
 instance ToJSON SignatureRes
+
+newtype PublicKeyRes = PublicKeyRes { public_key :: String } deriving (Show, Generic)
+instance FromJSON PublicKeyRes
+instance ToJSON PublicKeyRes
+
 
 server :: HSM.HSM IO -> Server SignerAPI
 server hsm = authorizedKeys
@@ -43,12 +48,12 @@ server hsm = authorizedKeys
     keys :: Handler String
     keys = return "{}"
 
-    getKeyHash :: String -> Handler String
+    getKeyHash :: String -> Handler PublicKeyRes
     getKeyHash hash = do
-      hasKey <- liftIO $ HSM.hasKey hsm hash
-      if hasKey
-        then return $ "\"" ++ hash ++ "\""
-        else throwError err404
+      pubKey <- liftIO $ HSM.getPublicKey hsm hash
+      case pubKey of
+        Nothing -> throwError err404
+        Just s -> return $ PublicKeyRes { public_key = s }
 
     signMessage :: String -> String -> Handler SignatureRes
     signMessage hash dat = 

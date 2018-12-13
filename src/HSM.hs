@@ -26,10 +26,11 @@ type KeyHash = String
 type KeyName = String
 type Data = E.HexString
 type SignedMessage = ByteString
+type PublicKey = String
 
 data HSM f = HSM
     { sign   :: KeyHash -> Data -> f (Maybe E.Base58String)
-    , hasKey :: KeyHash -> f Bool
+    , getPublicKey :: KeyHash -> f (Maybe PublicKey)
     }
 
 withHsmIO :: LibraryPath -> UserPin -> (KeyHash -> Maybe C.KeysConfig) -> (HSM IO -> IO a) -> IO a
@@ -40,26 +41,26 @@ withHsmIO libPath pin find f = bracket
     where
         _hsm l = HSM
             { sign = _sign l
-            , hasKey = _hasKey l
+            , getPublicKey = _getPublicKey l
             }
 
         _sign lib keyHash dat =
             let dataToSign =  E.blake2b $ E.strToHex dat in
-                withPrivKey lib pin (find keyHash) (\privKey -> do
+                withPrivKey lib pin (find keyHash) (\_ privKey -> do
                     signed <- PKCS.sign (PKCS.simpleMech PKCS.Ecdsa) privKey dataToSign Nothing
                     pure $ E.toBase58Str signed)
 
-        _hasKey lib keyHash = isJust <$> withPrivKey lib pin (find keyHash) (const $ pure True)
+        _getPublicKey lib keyHash = withPrivKey lib pin (find keyHash) (\kc _ -> pure $ C.publicKey kc)
 
 
-withPrivKey :: PKCS.Library -> UserPin -> Maybe C.KeysConfig -> (PKCS.Object -> IO a) -> IO (Maybe a)
+withPrivKey :: PKCS.Library -> UserPin -> Maybe C.KeysConfig -> (C.KeysConfig -> PKCS.Object -> IO a) -> IO (Maybe a)
 withPrivKey lib pin m f = maybe
     (pure Nothing)
     (\kc -> withSession' False lib (C.hsmSlot kc) pin
             (\sess -> do
                 objs <- PKCS.findObjects sess [PKCS.Class PKCS.PrivateKey, PKCS.Label (C.keyName kc)]
                 case objs of
-                    privKey:xs -> fmap Just (f privKey)
+                    privKey:xs -> fmap Just (f kc privKey)
                     [] ->  pure Nothing))
     m
 
@@ -77,13 +78,13 @@ withSession' writeable lib slotId pin f =
 
 -- | https://www.ibm.com/developerworks/community/blogs/79c1eec4-00c4-48ef-ae2b-01bd8448dd6c/entry/Rexx_Sample_Generate_Different_Types_of_PKCS_11_Keys?lang=en
 secp521r1EcParams :: ByteString
-secp521r1EcPalams = BS.pack [0x06,0x05,0x2b,0x81,0x04,0x00,0x23]
+secp521r1EcParams = BS.pack [0x06,0x05,0x2b,0x81,0x04,0x00,0x23]
 
 generatesecp421r1Key :: PKCS.Library -> SlotId -> UserPin -> String -> IO ()
 generatesecp421r1Key l s p name = withSession' True l s p (\sess -> do
         _ <- PKCS.generateKeyPair
             (PKCS.simpleMech PKCS.EcKeyPairGen)
-            [PKCS.Token True, PKCS.EcParams secp521r1EcPalams, PKCS.Label name]
+            [PKCS.Token True, PKCS.EcParams secp521r1EcParams, PKCS.Label name]
             [PKCS.Token True, PKCS.Label name]
             sess
         pure ())

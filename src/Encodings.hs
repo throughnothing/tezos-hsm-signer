@@ -16,9 +16,7 @@ instance FromJSON Base58String
 newtype HexString = HexString String deriving (Show, Generic)
 
 mkHexString :: String -> Maybe HexString
-mkHexString s = if all isHexDigit s
-    then Just $ HexString s
-    else Nothing
+mkHexString s = if all isHexDigit s then Just $ HexString s else Nothing
 
 strToHex :: HexString -> BS.ByteString
 strToHex (HexString s) = BS.pack $ fromIntegral . digitToInt <$> s
@@ -38,7 +36,7 @@ toBase58 = encodeBase58 bitcoinAlphabet
 base58ToHex :: Base58String -> Maybe HexString
 base58ToHex (Base58String s) = toHexStr <$> decodeBase58 bitcoinAlphabet (BSC.pack s)
 
--- | Leading bytes for P2Sig
+-- | Leading bytes for P2Sig in Tezos
 -- | https://github.com/tacoinfra/remote-signer/blob/master/src/remote_signer.py#L26
 p256Signature :: BS.ByteString
 p256Signature = BS.pack [0x36,0xF0,0x2C,0x34]

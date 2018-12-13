@@ -23,3 +23,7 @@ softhsm2-util --init-token --slot 0 --label "Test Token 1"
 stack build
 stack exec haskell-pkcs-exe
 ```
+
+## Resources
+* http://www.ocamlpro.com/2018/11/21/an-introduction-to-tezos-rpcs-signing-operations/
+ * https://www.ibm.com/developerworks/community/blogs/79c1eec4-00c4-48ef-ae2b-01bd8448dd6c/entry/Rexx_Sample_Generate_Different_Types_of_PKCS_11_Keys?lang=en

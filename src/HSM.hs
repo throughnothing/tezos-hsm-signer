@@ -1,10 +1,9 @@
-module HSM
-    ( HSM (..)
-    , withHsmIO
-    ) where
+module HSM where
+    -- ( HSM (..)
+    -- , withHsmIO
+    -- ) where
 
 import Control.Exception (bracket)
-import qualified System.Crypto.Pkcs11 as PKCS
 import Data.ByteString.Char8 (pack, unpack, ByteString)
 import qualified Data.ByteString as BS
 import Foreign.C.Types (CULong)
@@ -12,7 +11,9 @@ import Data.Word (Word64)
 import Unsafe.Coerce (unsafeCoerce)
 import Data.Hex as Hex
 import Data.Maybe (isJust)
+import qualified System.Crypto.Pkcs11 as PKCS
 
+import qualified Encodings as E
 import qualified Config as C
 
 type PubKey = PKCS.Object
@@ -23,11 +24,11 @@ type LibraryPath = String
 type UserPin = String
 type KeyHash = String
 type KeyName = String
-type Data = ByteString
+type Data = E.HexString
 type SignedMessage = ByteString
 
 data HSM f = HSM
-    { sign   :: KeyHash -> Data -> f (Maybe SignedMessage)
+    { sign   :: KeyHash -> Data -> f (Maybe E.Base58String)
     , hasKey :: KeyHash -> f Bool
     }
 
@@ -43,9 +44,10 @@ withHsmIO libPath pin find f = bracket
             }
 
         _sign lib keyHash dat =
-            withPrivKey lib pin (find keyHash) (\privKey -> do
-                signed <- PKCS.sign (PKCS.simpleMech PKCS.Ecdsa) privKey dat Nothing
-                pure $ Hex.hex signed)
+            let dataToSign =  E.blake2b $ E.strToHex dat in
+                withPrivKey lib pin (find keyHash) (\privKey -> do
+                    signed <- PKCS.sign (PKCS.simpleMech PKCS.Ecdsa) privKey dataToSign Nothing
+                    pure $ E.toBase58Str signed)
 
         _hasKey lib keyHash = isJust <$> withPrivKey lib pin (find keyHash) (const $ pure True)
 

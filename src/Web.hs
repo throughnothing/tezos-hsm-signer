@@ -15,13 +15,13 @@ import Network.Wai.Handler.Warp
 import Data.ByteString.Char8 (pack, unpack, ByteString)
 import System.Posix.Process (exitImmediately)
 import System.Exit (ExitCode(..))
+import Tezos.Operations (sign)
 
 import qualified Config as C
 import qualified HSM
-import qualified Encodings as E
 
 -- | Response Types
-newtype SignatureRes = SignatureRes { signature :: E.Base58String } deriving (Show, Generic)
+newtype SignatureRes = SignatureRes { signature :: String } deriving (Show, Generic)
 instance FromJSON SignatureRes
 instance ToJSON SignatureRes
 
@@ -60,10 +60,10 @@ server hsm = authorizedKeys
     signMessage :: String -> String -> Handler SignatureRes
     signMessage hash dat = do
         -- TODO: Base64 decode as well?
-        signE <- liftIO $ try $ HSM.signTZ (HSM.sign hsm hash) (pack dat)
+        signE <- liftIO $ try $ sign (HSM.sign hsm hash) (pack dat)
         case signE of
           Left HSM.KeyNotFound -> throwError err404
-          Right s -> return $ SignatureRes { signature = s }
+          Right s -> return $ SignatureRes { signature = unpack s }
 
     lock :: Handler String
     lock = liftIO $ do

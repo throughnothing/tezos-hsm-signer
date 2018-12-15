@@ -1,19 +1,12 @@
 module HSM where
-    -- ( HSM (..)
-    -- , withHsmIO
-    -- ) where
 
 import Control.Exception (bracket, Exception, throw)
 import Data.ByteString.Char8 (pack, unpack, ByteString)
-import qualified Data.ByteString as BS
 import Foreign.C.Types (CULong)
 import Data.Word (Word64)
 import Unsafe.Coerce (unsafeCoerce)
-import Data.Hex as Hex
-import Data.Maybe (isJust)
-import qualified System.Crypto.Pkcs11 as PKCS
 
-import qualified Encodings as E
+import qualified System.Crypto.Pkcs11 as PKCS
 import qualified Config as C
 
 type PubKey = PKCS.Object
@@ -24,7 +17,7 @@ type LibraryPath = String
 type UserPin = String
 type KeyHash = String
 type KeyName = String
-type Data = E.HexString
+type Data = String
 type SignedMessage = ByteString
 type PublicKey = String
 
@@ -35,16 +28,6 @@ data HSM f = HSM
 
 data HSMError = KeyNotFound deriving (Show)
 instance Exception HSMError
-
-signPrepTZ :: ByteString -> ByteString
-signPrepTZ x = x
-
-signPostTZ :: ByteString -> ByteString
-signPostTZ x = x
-
-signTZ :: Functor f => (ByteString -> f ByteString) -> ByteString -> f E.Base58String
-signTZ f i = E.toBase58Str . signPostTZ <$> f (signPrepTZ i)
-
 
 withHsmIO :: LibraryPath -> UserPin -> (KeyHash -> Maybe C.KeysConfig) -> (HSM IO -> IO a) -> IO a
 withHsmIO libPath pin find f = bracket
@@ -80,20 +63,3 @@ withSession' writeable lib slotId pin f =
             (PKCS.login sess PKCS.User (pack pin))
             (const $ PKCS.logout sess)
             (pure $ f sess))
-
-
-
--- | Helper functions to be used for HSM initialization
-
--- | https://www.ibm.com/developerworks/community/blogs/79c1eec4-00c4-48ef-ae2b-01bd8448dd6c/entry/Rexx_Sample_Generate_Different_Types_of_PKCS_11_Keys?lang=en
-secp521r1EcParams :: ByteString
-secp521r1EcParams = BS.pack [0x06,0x05,0x2b,0x81,0x04,0x00,0x23]
-
-generatesecp421r1Key :: PKCS.Library -> SlotId -> UserPin -> String -> IO ()
-generatesecp421r1Key l s p name = withSession' True l s p (\sess -> do
-        _ <- PKCS.generateKeyPair
-            (PKCS.simpleMech PKCS.EcKeyPairGen)
-            [PKCS.Token True, PKCS.EcParams secp521r1EcParams, PKCS.Label name]
-            [PKCS.Token True, PKCS.Label name]
-            sess
-        pure ())

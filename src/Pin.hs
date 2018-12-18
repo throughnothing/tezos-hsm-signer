@@ -9,7 +9,9 @@ getPin prompt = do
   hFlush stdout
   pass <- withEcho False getLine
   putChar '\n'
-  return pass
+  case pass of
+    "" -> getPin prompt
+    _  -> return pass
 
 withEcho :: Bool -> IO a -> IO a
 withEcho echo action = do

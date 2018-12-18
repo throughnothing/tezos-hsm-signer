@@ -3,7 +3,7 @@ server:
 hsm:
   libPath: /usr/local/lib/softhsm/libsofthsm2.so
 keys:
-- keyName: remote
-  publicKeyHash: tz1bvNWdJWfnt8Pbr3ZTZ2bFHSvLWvvufxSY
-  publicKey: edpktzHVJM2ZR2Bd3WitwwjdiZBZey9rjCag2kNNX7RCm3NFMbMYcb
-  hsmSlot: 1454497325 
+- keyName: test1
+  publicKeyHash: tz3fNgiRyEZeXD5eh6rEocSp8PBzii2w38Ku
+  publicKey: p2pk68PLuTsD7erc7VFwabUcvDSk4GuDTh5n5gpJgi5GPXb1CQk5vY8
+  hsmSlot: 1165926823

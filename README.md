@@ -13,7 +13,12 @@ should *not* need the SO password, but it will be needed to make
 changes / updates to the token.
 
 ```
-softhsm2-util --init-token --slot 0 --label "Test Token 1"
+softhsm2-util --init-token --slot 0 --label Test1
+# Note the new Slot ID # and also the corresponding
+# hex (0xAAAAA) number from the below command
+softhsm2-util --show-slots
+# Import the test privat key
+softhsm2-util --import test/keys/testprivkey.pem --slot [SLOTID] --label Test1 --id [AAAAA]
 ```
 
 ## Building and Running
@@ -21,7 +26,8 @@ softhsm2-util --init-token --slot 0 --label "Test Token 1"
 ```
 # If you need stack: brew install stack on OS X
 stack build
-stack exec haskell-pkcs-exe
+# Run the web server
+stack exec server
 ```
 
 ## Resources

@@ -31,7 +31,7 @@ instance ToJSON PublicKeyRes
 
 -- | API Type
 type SignerAPI =
-  "auhtorized_keys" :> Get '[PlainText, JSON] String
+  "auhtorized_keys" :> Get '[JSON] String
   :<|> "keys" :> Get '[PlainText, JSON] String
   :<|> "keys" :> Capture "keyHash" String :> Get '[JSON] PublicKeyRes
   :<|> "keys" :> Capture "keyHash" String :> ReqBody '[JSON] String :> Post '[JSON] SignatureRes

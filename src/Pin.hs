@@ -1,4 +1,4 @@
-module Pin where
+module Pin (getPin) where
 
 import System.IO (hFlush, stdout, stdin, hGetEcho, hSetEcho)
 import Control.Exception (bracket_)

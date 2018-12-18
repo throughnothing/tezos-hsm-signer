@@ -1,4 +1,4 @@
-module Encoding where
+module Encoding (b58Check) where
 
 import Data.ByteString (ByteString)
 import Data.ByteString.Base58 (encodeBase58, bitcoinAlphabet)

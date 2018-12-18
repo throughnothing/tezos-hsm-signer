@@ -1,4 +1,8 @@
-module HSM where
+module HSM
+    ( HSM(..)
+    , KeyNotFound(..)
+    , withHsmIO
+    ) where
 
 import Control.Exception (bracket, Exception, throw)
 import Data.ByteString.Char8 (pack, unpack, ByteString)

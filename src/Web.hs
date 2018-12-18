@@ -20,6 +20,12 @@ import Tezos.Operations (sign)
 import qualified Config as C
 import qualified HSM
 
+
+-- | Request Types
+newtype SignatureReq = SignatureReq String deriving(Show, Generic)
+instance FromJSON SignatureReq
+instance ToJSON SignatureReq
+
 -- | Response Types
 newtype SignatureRes = SignatureRes { signature :: String } deriving (Show, Generic)
 instance FromJSON SignatureRes
@@ -34,7 +40,7 @@ type SignerAPI =
   "auhtorized_keys" :> Get '[JSON] String
   :<|> "keys" :> Get '[PlainText, JSON] String
   :<|> "keys" :> Capture "keyHash" String :> Get '[JSON] PublicKeyRes
-  :<|> "keys" :> Capture "keyHash" String :> ReqBody '[JSON] String :> Post '[JSON] SignatureRes
+  :<|> "keys" :> Capture "keyHash" String :> ReqBody '[JSON] SignatureReq :> Post '[JSON] SignatureRes
   :<|> "lock" :> Get '[PlainText, JSON] String
 
 server :: HSM.HSM IO -> Server SignerAPI
@@ -57,9 +63,8 @@ server hsm = authorizedKeys
         Left HSM.KeyNotFound -> throwError err404
         Right s -> return $ PublicKeyRes { public_key = s }
 
-    signMessage :: String -> String -> Handler SignatureRes
-    signMessage hash dat = do
-        -- TODO: Base64 decode as well?
+    signMessage :: String -> SignatureReq -> Handler SignatureRes
+    signMessage hash (SignatureReq dat) = do
         signE <- liftIO $ try $ sign (HSM.sign hsm hash) (pack dat)
         case signE of
           Left HSM.KeyNotFound -> throwError err404

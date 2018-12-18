@@ -6,8 +6,7 @@ import Data.ByteArray (pack, unpack)
 
 import Hash (sha256)
 
--- | Perfect code example
--- | https://github.com/wzbg/base58check/blob/master/index.js#L13
+-- | Modeled after: https://github.com/wzbg/base58check/blob/master/index.js#L13
 b58Check :: ByteString -> ByteString -> ByteString
 b58Check prefix bs = encodeB58 $ dat `mappend` dblShaFirst4
     where

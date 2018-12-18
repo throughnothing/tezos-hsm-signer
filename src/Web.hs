@@ -79,12 +79,11 @@ server hsm = authorizedKeys
 signerApp :: HSM.HSM IO -> Application
 signerApp h = serve (Proxy :: Proxy SignerAPI) $ server h
 
--- | TODO: Don't requires HSM IO specifically, require HSM f + natrual transform to IO
 serveSignerAPI :: Int -> HSM.HSM IO -> IO ()
 serveSignerAPI port h = run port $ logMiddleware $ signerApp h
 
 logMiddleware :: Middleware
 logMiddleware innerApp request respond = do
-  -- | TODO: Structure this log better
+  -- | TODO: Structure the logs better
   print request
   innerApp request respond

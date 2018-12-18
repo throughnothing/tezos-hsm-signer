@@ -50,10 +50,10 @@ executables:
     - -rtsopts
     - -with-rtsopts=-N
     dependencies:
-    - haskell-pkcs
+    - hsm-signer
 
 tests:
-  haskell-pkcs-test:
+  test:
     main:                Spec.hs
     source-dirs:         test
     ghc-options:
@@ -61,4 +61,4 @@ tests:
     - -rtsopts
     - -with-rtsopts=-N
     dependencies:
-    - haskell-pkcs
+    - hsm-signer

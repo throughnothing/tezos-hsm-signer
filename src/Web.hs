@@ -15,14 +15,16 @@ import Network.Wai.Handler.Warp
 import Data.ByteString.Char8 (pack, unpack, ByteString)
 import System.Posix.Process (exitImmediately)
 import System.Exit (ExitCode(..))
+
 import Tezos.Operations (sign)
+import Tezos.Types (mkTzCmd, TzCmd)
 
 import qualified Config as C
 import qualified HSM
 
 
 -- | Request Types
-newtype SignatureReq = SignatureReq String deriving(Show, Generic)
+newtype SignatureReq = SignatureReq TzCmd deriving(Show, Generic)
 instance FromJSON SignatureReq
 instance ToJSON SignatureReq
 
@@ -60,14 +62,18 @@ server hsm = authorizedKeys
     getKeyHash hash = do
       pubKey <- liftIO $ try $ HSM.getPublicKey hsm hash
       case pubKey of
-        Left HSM.KeyNotFound -> throwError err404
+        Left (HSM.ObjectNotFound _) -> throwError err404
         Right s -> return $ PublicKeyRes { public_key = s }
 
     signMessage :: String -> SignatureReq -> Handler SignatureRes
-    signMessage hash (SignatureReq dat) = do
-        signE <- liftIO $ try $ sign (HSM.sign hsm hash) (pack dat)
+    signMessage hash (SignatureReq tzcmd) = do
+        -- | TODO: Check for double signature
+        -- | https://github.com/tacoinfra/remote-signer/blob/master/src/remote_signer.py#L72
+        -- | TODO: Do we need to lock around signings? a la:
+        -- | https://github.com/tacoinfra/remote-signer/blob/master/src/remote_signer.py#L100
+        signE <- liftIO $ try $ sign (HSM.sign hsm hash) tzcmd
         case signE of
-          Left HSM.KeyNotFound -> throwError err404
+          Left (HSM.ObjectNotFound _) -> throwError err404
           Right s -> return $ SignatureRes { signature = unpack s }
 
     lock :: Handler String

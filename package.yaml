@@ -37,6 +37,8 @@ dependencies:
 - asn1-types
 - largeword
 - memory
+- mtl
+- text
 
 library:
   source-dirs: src
@@ -62,3 +64,5 @@ tests:
     - -with-rtsopts=-N
     dependencies:
     - hsm-signer
+    - hspec
+    - QuickCheck

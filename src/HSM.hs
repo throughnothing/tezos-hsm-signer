@@ -13,8 +13,3 @@ import Foreign.C.Types (CULong)
 import Unsafe.Coerce (unsafeCoerce)
 
 import HSM.Types
-
-data HSM f = HSM
-    { sign   :: KeyHash -> ByteString -> f ByteString
-    , getPublicKey :: KeyHash -> f PublicKey
-    }

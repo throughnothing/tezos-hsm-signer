@@ -60,14 +60,14 @@ server hsm = authorizedKeys
     getKeyHash hash = do
       pubKey <- liftIO $ try $ HSM.getPublicKey hsm hash
       case pubKey of
-        Left HSM.KeyNotFound -> throwError err404
+        Left (HSM.ObjectNotFound _) -> throwError err404
         Right s -> return $ PublicKeyRes { public_key = s }
 
     signMessage :: String -> SignatureReq -> Handler SignatureRes
     signMessage hash (SignatureReq dat) = do
         signE <- liftIO $ try $ sign (HSM.sign hsm hash) (pack dat)
         case signE of
-          Left HSM.KeyNotFound -> throwError err404
+          Left (HSM.ObjectNotFound _) -> throwError err404
           Right s -> return $ SignatureRes { signature = unpack s }
 
     lock :: Handler String

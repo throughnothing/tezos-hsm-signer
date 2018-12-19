@@ -37,6 +37,7 @@ dependencies:
 - asn1-types
 - largeword
 - memory
+- mtl
 
 library:
   source-dirs: src

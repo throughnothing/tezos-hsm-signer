@@ -19,7 +19,7 @@ import qualified HSM.IO.Internal as HSM
 import qualified System.Crypto.Pkcs11 as PKCS
 
 
-slotId :: CULong
+slotId :: Int
 slotId = 1165926823
 
 kName :: String
@@ -30,5 +30,12 @@ library = "/usr/local/lib/softhsm/libsofthsm2.so"
 
 main :: IO ()
 main = do
-  pkh <- HSM.withLibrary library $ \l -> HSM.parseTZKey l "12345" (slotId,kName)
+  -- | Generate a new P256 ECDSA KeyPair
+  -- newKey <- HSM.withLibrary library $
+  --   \l -> HSM.runSessionRW l slotId "12345" $ HSM.generatesecp421r1Key kName
+  -- print newKey
+
+  -- | Parse a PubKey to Tezos format (P256 only atm)
+  pkh <- HSM.withLibrary library $
+    \l -> HSM.runSessionRO l slotId "12345" $ HSM.parseTZKey kName
   print pkh

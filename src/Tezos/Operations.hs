@@ -6,6 +6,7 @@ import Encoding (b58Check)
 import Hash (toBS, blake2b256)
 import Tezos.Constants (p256SigPrefix)
 
--- TODO: Validate Preamble, make sure it's not already a signed message, etc.
-sign :: Functor f => (ByteString -> f ByteString) -> ByteString -> f ByteString
-sign f i = b58Check p256SigPrefix <$> f (toBS $ blake2b256 i)
+import qualified Tezos.Types as TT
+
+sign :: Functor f => (ByteString -> f ByteString) -> TT.TzCmd -> f ByteString
+sign f tz = b58Check p256SigPrefix <$> f (toBS $ blake2b256 (TT.toBS tz))

@@ -38,6 +38,7 @@ dependencies:
 - largeword
 - memory
 - mtl
+- text
 
 library:
   source-dirs: src

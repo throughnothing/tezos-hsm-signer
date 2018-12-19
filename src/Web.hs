@@ -15,14 +15,16 @@ import Network.Wai.Handler.Warp
 import Data.ByteString.Char8 (pack, unpack, ByteString)
 import System.Posix.Process (exitImmediately)
 import System.Exit (ExitCode(..))
+
 import Tezos.Operations (sign)
+import Tezos.Types (mkTzCmd, TzCmd)
 
 import qualified Config as C
 import qualified HSM
 
 
 -- | Request Types
-newtype SignatureReq = SignatureReq String deriving(Show, Generic)
+newtype SignatureReq = SignatureReq TzCmd deriving(Show, Generic)
 instance FromJSON SignatureReq
 instance ToJSON SignatureReq
 
@@ -64,8 +66,8 @@ server hsm = authorizedKeys
         Right s -> return $ PublicKeyRes { public_key = s }
 
     signMessage :: String -> SignatureReq -> Handler SignatureRes
-    signMessage hash (SignatureReq dat) = do
-        signE <- liftIO $ try $ sign (HSM.sign hsm hash) (pack dat)
+    signMessage hash (SignatureReq tzcmd) = do
+        signE <- liftIO $ try $ sign (HSM.sign hsm hash) tzcmd
         case signE of
           Left (HSM.ObjectNotFound _) -> throwError err404
           Right s -> return $ SignatureRes { signature = unpack s }

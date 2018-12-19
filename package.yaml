@@ -64,3 +64,5 @@ tests:
     - -with-rtsopts=-N
     dependencies:
     - hsm-signer
+    - hspec
+    - QuickCheck

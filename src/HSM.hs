@@ -2,16 +2,22 @@ module HSM
     ( HSM(..)
     , KeyNotFound(..)
     , withHsmIO
+    , generatesecp421r1Key
+    , withPrivKey
+    , withPubKey
     ) where
 
 import Control.Exception (bracket, Exception, throw)
+import Data.ASN1.Encoding (encodeASN1')
+import Data.ASN1.BinaryEncoding (DER(..))
+import Data.ASN1.Types (ASN1(..), ASN1ConstructionType(..))
 import Data.ByteString.Char8 (pack, unpack, ByteString)
-import Foreign.C.Types (CULong)
 import Data.Word (Word64)
+import Foreign.C.Types (CULong)
 import Unsafe.Coerce (unsafeCoerce)
 
-import qualified System.Crypto.Pkcs11 as PKCS
 import qualified Config as C
+import qualified System.Crypto.Pkcs11 as PKCS
 
 type PubKey = PKCS.Object
 type PrivKey = PKCS.Object
@@ -74,3 +80,24 @@ withSession' writeable lib slotId pin f =
             (PKCS.login sess PKCS.User (pack pin))
             (const $ PKCS.logout sess)
             (pure $ f sess))
+
+
+
+-- | Helper functions to be used for HSM initialization
+
+-- | https://www.ibm.com/developerworks/community/blogs/79c1eec4-00c4-48ef-ae2b-01bd8448dd6c/entry/Rexx_Sample_Generate_Different_Types_of_PKCS_11_Keys?lang=en
+-- | Specified in 2.3.3 of:
+-- | http://docs.oasis-open.org/pkcs11/pkcs11-curr/v2.40/cs01/pkcs11-curr-v2.40-cs01.html
+secp521r1EcdsaParams :: ByteString
+secp521r1EcdsaParams = encodeASN1' DER seq
+  where
+    -- | From: https://tools.ietf.org/html/rfc5480
+    curveName = [1,2,840,10045,3,1,7]
+    seq = [OID curveName]
+
+generatesecp421r1Key :: PKCS.Library -> SlotId -> UserPin -> String -> IO (PKCS.Object, PKCS.Object)
+generatesecp421r1Key l s p name = withSession' True l s p
+        (PKCS.generateKeyPair
+            (PKCS.simpleMech PKCS.EcdsaKeyPairGen)
+            [PKCS.Token True, PKCS.EcdsaParams secp521r1EcdsaParams, PKCS.Label name]
+            [PKCS.Token True, PKCS.Label name])

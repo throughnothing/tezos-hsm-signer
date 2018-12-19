@@ -3,5 +3,9 @@ resolver: lts-12.22
 packages:
 - .
 extra-deps:
-- hspkcs11-0.7
+# - hspkcs11-0.7
+# Custom hspkcs11 repo which fixesd
+# non-exhaustive issues with EcdsaParams
+- github: throughnothing/hspkcs11
+  commit: f5e8e711b45eccbaf509d1b0e9bbea46747231f5
 - base58-bytestring-0.1.0

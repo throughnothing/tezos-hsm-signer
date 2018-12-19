@@ -1,6 +1,6 @@
 module Main where
 
-import qualified HSM
+import qualified HSM.IO as HSMIO
 import qualified Web
 import qualified Config as C
 import qualified Pin
@@ -12,4 +12,4 @@ main = do
   pin <- Pin.getPin "HSM User Pin:"
   let lib = C.libPath (C.hsm config)
       port = C.port (C.server config) in
-    HSM.withHsmIO lib pin (C.findKeyByHash config) (Web.serveSignerAPI port)
+    HSMIO.withHsmIO lib pin (C.findKeyByHash config) (Web.serveSignerAPI port)

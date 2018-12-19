@@ -15,7 +15,7 @@ import Tezos.Operations (sign)
 import Config (KeysConfig(..))
 
 import qualified ASN1
-import qualified HSM
+import qualified HSM.IO.Internal as HSM
 import qualified System.Crypto.Pkcs11 as PKCS
 
 
@@ -28,32 +28,7 @@ kName = "test1"
 library :: String
 library = "/usr/local/lib/softhsm/libsofthsm2.so"
 
-testKeys :: KeysConfig
-testKeys = KeysConfig
-  { keyName = kName
-  , publicKeyHash = "unknown"
-  , publicKey = "unknown"
-  , hsmSlot = unsafeCoerce slotId
-  }
-
-
 main :: IO ()
 main = do
-  lib <- PKCS.loadLibrary library
-
-  -- | Generate a new key in the HSM
-  -- _ <- HSM.generatesecp421r1Key lib slotId "12345" kName
-
-  -- | Generate pubkeyHash,pubKey from HSM
-  pkh <- HSM.withPubKey lib "12345" (slotId, kName)
-    (\obj -> do
-      ecdsaParamsBS <- PKCS.getEcdsaParams obj
-      pointBS <- PKCS.getEcPoint obj
-      let e = ASN1.parsePublicKeyDER <$> decodeASN1' DER ecdsaParamsBS <*> decodeASN1' DER pointBS
-          pk = join $ left show e
-          in pure $ (\x -> (pubKeyHash x, pubKey x)) <$> pk)
-
+  pkh <- HSM.withLibrary library $ \l -> HSM.parseTZKey l "12345" (slotId,kName)
   print pkh
-
-
-  PKCS.releaseLibrary lib

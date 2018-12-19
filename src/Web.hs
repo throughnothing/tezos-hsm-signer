@@ -67,6 +67,10 @@ server hsm = authorizedKeys
 
     signMessage :: String -> SignatureReq -> Handler SignatureRes
     signMessage hash (SignatureReq tzcmd) = do
+        -- | TODO: Check for double signature
+        -- | https://github.com/tacoinfra/remote-signer/blob/master/src/remote_signer.py#L72
+        -- | TODO: Do we need to lock around signings? a la:
+        -- | https://github.com/tacoinfra/remote-signer/blob/master/src/remote_signer.py#L100
         signE <- liftIO $ try $ sign (HSM.sign hsm hash) tzcmd
         case signE of
           Left (HSM.ObjectNotFound _) -> throwError err404

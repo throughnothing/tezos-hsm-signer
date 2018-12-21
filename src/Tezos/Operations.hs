@@ -11,6 +11,6 @@ import qualified Tezos.Types as TT
 
 -- | TODO: Make this work for multiple Curves
 
-sign :: Functor f => (ByteString -> f TT.Signature) -> TT.TzCmd -> f ByteString
+sign :: Functor f => (ByteString -> f CT.Signature) -> TT.TzCmd -> f ByteString
 sign f tz = b58c <$> f (toBS $ blake2b256 (TT.toBS tz))
-  where b58c (TT.Signature curve sig) = b58Check (sigPrefix curve) sig
+  where b58c (CT.Signature curve sig) = b58Check (sigPrefix curve) sig

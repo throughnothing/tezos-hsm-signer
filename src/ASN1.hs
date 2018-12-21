@@ -12,11 +12,12 @@ import qualified Data.ASN1.Types as AT
 import qualified Data.ASN1.BinaryEncoding as ABE
 import qualified Data.ASN1.Encoding as AE
 
-parsePublicKeyDER :: [AT.ASN1] -> [AT.ASN1] -> Either String PublicKey
+parsePublicKeyDER :: [AT.ASN1] -> [AT.ASN1] -> Either String CT.PublicKey
 parsePublicKeyDER [AT.OID arr] [AT.OctetString bs] = buildKey
-    <$> (toCurve <$> ecParamsToCurveName arr)
+    <$> ecParamsToCurveName arr
     <*> parsePoint bs
-    where buildKey c q = PublicKey {public_curve = c, public_q = q}
+    where
+        buildKey c q = CT.PublicKey { CT.curveName = c, CT.pk = PublicKey {public_curve = toCurve c, public_q = q} }
 parsePublicKeyDER _ _ = Left "Unknown PubKey DER Format"
 
 parsePointDER :: [AT.ASN1] -> Either String Point

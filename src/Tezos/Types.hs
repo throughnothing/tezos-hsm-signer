@@ -2,6 +2,8 @@
 {-# LANGUAGE DeriveGeneric #-}
 module Tezos.Types
   ( TzCmd
+  , Prefix(..)
+  , Signature(..)
   , mkTzCmd
   , mkTzCmdFromStr
   , toBS
@@ -15,9 +17,14 @@ import Data.Maybe (fromMaybe)
 import Data.String (fromString)
 import GHC.Generics (Generic)
 
+import qualified Crypto.Types as CT
 import qualified Data.ByteString.Char8 as BSC
 import qualified Data.ByteArray as BA
 import qualified Data.Text as DT
+
+data Signature = Signature CT.CurveName ByteString deriving (Show, Generic)
+
+newtype Prefix = Prefix ByteString deriving (Show, Generic)
 
 newtype TzCmd = TzCmd ByteString deriving (Show, Generic)
 instance FromJSON TzCmd where

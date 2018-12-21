@@ -14,7 +14,7 @@ import qualified Data.ASN1.Encoding as AE
 
 parsePublicKeyDER :: [AT.ASN1] -> [AT.ASN1] -> Either String PublicKey
 parsePublicKeyDER [AT.OID arr] [AT.OctetString bs] = buildKey
-    <$> (toCurve <$> ecparamsToCurveName arr)
+    <$> (toCurve <$> ecParamsToCurveName arr)
     <*> parsePoint bs
     where buildKey c q = PublicKey {public_curve = c, public_q = q}
 parsePublicKeyDER _ _ = Left "Unknown PubKey DER Format"
@@ -35,7 +35,7 @@ parsePoint ls
 curveFromEcParams :: ByteString -> Either String CT.CurveName
 curveFromEcParams bs = curveOf =<< left show (AE.decodeASN1' ABE.DER bs)
         where
-            curveOf [AT.OID arr] = ecparamsToCurveName arr
+            curveOf [AT.OID arr] = ecParamsToCurveName arr
             curveOf            _ = Left "Couldn't parse EC Params"
 
 -- | These come from: https://tools.ietf.org/html/rfc5480#section-2.1.1.1
@@ -47,10 +47,14 @@ curveFromEcParams bs = curveOf =<< left show (AE.decodeASN1' ABE.DER bs)
 -- |
 -- |   - http://www.secg.org/SEC2-Ver-1.0.pdf (for secp256k1 (?))
 -- |
-ecparamsToCurveName :: [Integer] -> Either String CT.CurveName
-ecparamsToCurveName [1,2,840,10045,3,1,7] = Right CT.P256
-ecparamsToCurveName        [1,3,132,0,10] = Right CT.SECP256K1
-ecparamsToCurveName                     _ = Left "No Known Curve Found"
+ecParamsToCurveName :: Num a => Eq a => [a] -> Either String CT.CurveName
+ecParamsToCurveName [1,2,840,10045,3,1,7] = Right CT.P256
+ecParamsToCurveName        [1,3,132,0,10] = Right CT.SECP256K1
+ecParamsToCurveName                     _ = Left "No Known Curve Found"
+
+curveToEcParams :: Num a => CT.CurveName -> [a]
+curveToEcParams CT.P256      = [1,2,840,10045,3,1,7]
+curveToEcParams CT.SECP256K1 = [1,3,132,0,10]
   
 toCurve :: CT.CurveName -> Curve
 toCurve CT.P256 = getCurveByName SEC_p256r1

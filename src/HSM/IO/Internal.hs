@@ -7,7 +7,7 @@ import Control.Monad.Reader (ReaderT(..), MonadReader(..))
 import Data.ASN1.Encoding (encodeASN1', decodeASN1')
 import Data.ASN1.BinaryEncoding (DER(..))
 import Data.ASN1.Types (ASN1(..))
-import Data.ByteString.Char8 (pack, ByteString)
+import Data.ByteString(ByteString)
 import Control.Exception (bracket, Exception, throw)
 import Foreign.C.Types (CULong)
 import Unsafe.Coerce (unsafeCoerce)
@@ -19,6 +19,7 @@ import Tezos.Types (Signature(..))
 
 import qualified ASN1
 import qualified Config as C
+import qualified Data.ByteString.Char8 as DBC
 import qualified System.Crypto.Pkcs11 as PKCS
 
 type HSMSession = ReaderT PKCS.Session IO
@@ -85,7 +86,7 @@ runSession' :: Bool -> PKCS.Library -> SlotId -> UserPin -> HSMSession a -> IO a
 runSession' writeable lib slotId pin hsms =
   PKCS.withSession lib (unsafeCoerce slotId) writeable
       (\sess -> bracket
-          (PKCS.login sess PKCS.User (pack pin))
+          (PKCS.login sess PKCS.User (DBC.pack pin))
           (const $ PKCS.logout sess)
           (pure $ runReaderT hsms sess))
 
@@ -104,20 +105,13 @@ parseTZKey name = do
         Right x -> pure (pubKeyHash x, pubKey x)
 
 -- | TODO: make this more generic to support creating multiple curves
-generatesecp421r1Key :: String -> HSMSession (PKCS.Object, PKCS.Object)
-generatesecp421r1Key name = do
+generateKeyPair :: CurveName -> String -> HSMSession (PKCS.Object, PKCS.Object)
+generateKeyPair curve name = do
     sess <- ask
     liftIO $ PKCS.generateKeyPair
         (PKCS.simpleMech PKCS.EcdsaKeyPairGen)
-        [PKCS.Token True, PKCS.EcdsaParams secp521r1EcdsaParams, PKCS.Label name]
+        [PKCS.Token True, PKCS.EcdsaParams ecdsaParams, PKCS.Label name]
         [PKCS.Token True, PKCS.Label name]
         sess
 
--- | TODO: make this more generic to support creating multiple curves
--- | Specified in 2.3.3 of:
--- | http://docs.oasis-open.org/pkcs11/pkcs11-curr/v2.40/cs01/pkcs11-curr-v2.40-cs01.html
-secp521r1EcdsaParams :: ByteString
-secp521r1EcdsaParams = encodeASN1' DER seq
-  where
-    -- | From: https://tools.ietf.org/html/rfc5480
-    seq = [OID [1,2,840,10045,3,1,7]]
+    where ecdsaParams = encodeASN1' DER [OID (ASN1.curveToEcParams curve)]

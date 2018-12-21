@@ -1,27 +1,34 @@
-module Tezos.Constants where
+module Tezos.Constants
+  ( pkPrefix
+  , pkhPrefix
+  , sigPrefix
+  , skPrefix
+  ) where
 
-import Data.ByteString (ByteString, pack)
+import Data.ByteString (pack, ByteString)
+import Data.Word (Word8)
 
--- | Prefix bytes for P2Sig in Tezos
--- |https://gitlab.com/tezos/tezos/blob/master/src/lib_crypto/base58.ml#L354
-p256SigPrefix :: ByteString
-p256SigPrefix = pack [54, 240, 44, 52]
+import Tezos.Types (CurveName(..), Prefix(..))
 
--- | https://gitlab.com/tezos/tezos/blob/master/src/lib_crypto/base58.ml#L328
--- | P256 Secret Key Prefix
-p256SKPrefix :: ByteString
-p256SKPrefix = pack [16, 81, 238, 189]
+-- | All Prefixes in this file taken from:
+-- |https://gitlab.com/tezos/tezos/blob/master/src/lib_crypto/base58.ml
 
--- | https://gitlab.com/tezos/tezos/blob/master/src/lib_crypto/base58.ml#L328
--- | P256 Public Key Prefix
-p256PKPrefix :: ByteString
-p256PKPrefix = pack [3,178,139,127]
+sigPrefix :: CurveName -> ByteString
+sigPrefix P256 = _p [54, 240, 44, 52]
+sigPrefix SECP256K1 = _p [13, 115, 101, 019, 063]
 
--- \009\048\057\115\171
--- | P256 Encrypted Secret Key Prefix
-p256ESKPrefix :: ByteString
-p256ESKPrefix = pack [9,48,57,115,171]
+pkhPrefix :: CurveName -> ByteString
+pkhPrefix P256 = _p [6,161,164]
+pkhPrefix SECP256K1 = _p [6, 161, 161]
 
--- | This is to generate generates tz3 addresses
-p256PKHPrefix :: ByteString
-p256PKHPrefix = pack [6,161,164]
+pkPrefix :: CurveName -> ByteString
+pkPrefix P256 = _p [3,178,139,127]
+pkPrefix SECP256K1 = _p [3, 254, 226, 86]
+
+skPrefix :: CurveName -> ByteString
+skPrefix P256 = _p [16, 81, 238, 189]
+skPrefix SECP256K1 = _p [17, 162, 224, 201]
+
+
+_p :: [Word8] -> ByteString
+_p = pack

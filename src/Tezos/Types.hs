@@ -2,6 +2,8 @@
 {-# LANGUAGE DeriveGeneric #-}
 module Tezos.Types
   ( TzCmd
+  , CurveName(..)
+  , Prefix(..)
   , mkTzCmd
   , mkTzCmdFromStr
   , toBS
@@ -18,6 +20,11 @@ import GHC.Generics (Generic)
 import qualified Data.ByteString.Char8 as BSC
 import qualified Data.ByteArray as BA
 import qualified Data.Text as DT
+
+-- | Only the curves we support
+data CurveName = P256 | SECP256K1 deriving (Show, Generic)
+
+newtype Prefix = Prefix ByteString deriving (Show, Generic)
 
 newtype TzCmd = TzCmd ByteString deriving (Show, Generic)
 instance FromJSON TzCmd where

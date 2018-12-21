@@ -17,13 +17,17 @@ import Data.ByteArray (pack, convert, cons)
 
 import Encoding (b58Check)
 import Hash (blake2b160, sha256)
-import Tezos.Constants (p256PKPrefix, p256PKHPrefix, p256SKPrefix, p256ESKPrefix)
+import Tezos.Constants (pkPrefix, pkhPrefix, skPrefix)
+import Tezos.Types (CurveName(..))
+
+
+-- TODO: Make these all understand the specific curve of the keys
 
 pubKey :: PublicKey -> ByteString
-pubKey pk@PublicKey {public_q = Point x y} = b58Check p256PKPrefix $ pubKeyCompressed pk
+pubKey pk@PublicKey {public_q = Point x y} = b58Check (pkPrefix P256) $ pubKeyCompressed pk
 
 pubKeyHash :: PublicKey -> ByteString
-pubKeyHash pk@PublicKey {public_q = Point x y} = b58Check p256PKHPrefix $ convert $ blake2b160 (pubKeyCompressed pk)
+pubKeyHash pk@PublicKey {public_q = Point x y} = b58Check (pkhPrefix P256) $ convert $ blake2b160 (pubKeyCompressed pk)
 
 pubKeyCompressed :: PublicKey -> ByteString
 pubKeyCompressed PublicKey {public_q = Point x y}
@@ -32,4 +36,4 @@ pubKeyCompressed PublicKey {public_q = Point x y}
         where packWith n = cons n $ i2osp x
 
 privKey :: PrivateKey -> ByteString
-privKey pk@PrivateKey {private_d = d} = b58Check p256SKPrefix $ i2osp d
+privKey pk@PrivateKey {private_d = d} = b58Check (skPrefix P256) $ i2osp d

@@ -2,8 +2,8 @@
 {-# LANGUAGE DeriveGeneric #-}
 module Tezos.Types
   ( TzCmd
-  , CurveName(..)
   , Prefix(..)
+  , Signature(..)
   , mkTzCmd
   , mkTzCmdFromStr
   , toBS
@@ -17,12 +17,12 @@ import Data.Maybe (fromMaybe)
 import Data.String (fromString)
 import GHC.Generics (Generic)
 
+import qualified Crypto.Types as CT
 import qualified Data.ByteString.Char8 as BSC
 import qualified Data.ByteArray as BA
 import qualified Data.Text as DT
 
--- | Only the curves we support
-data CurveName = P256 | SECP256K1 deriving (Show, Generic)
+data Signature = Signature CT.CurveName ByteString deriving (Show, Generic)
 
 newtype Prefix = Prefix ByteString deriving (Show, Generic)
 

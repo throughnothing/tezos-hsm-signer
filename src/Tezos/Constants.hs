@@ -8,7 +8,8 @@ module Tezos.Constants
 import Data.ByteString (pack, ByteString)
 import Data.Word (Word8)
 
-import Tezos.Types (CurveName(..), Prefix(..))
+import Tezos.Types (Prefix(..))
+import Crypto.Types (CurveName(..))
 
 -- | All Prefixes in this file taken from:
 -- |https://gitlab.com/tezos/tezos/blob/master/src/lib_crypto/base58.ml

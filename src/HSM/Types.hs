@@ -3,11 +3,14 @@ module HSM.Types where
 import Control.Exception (Exception)
 import Data.ByteString.Char8 (ByteString)
 
+import Crypto.Types (CurveName(..))
+import Tezos.Types (Signature)
+
 import qualified System.Crypto.Pkcs11 as PKCS
 
 -- | The main data type for HSM Interactions
 data HSM f = HSM
-    { sign   :: KeyHash -> ByteString -> f ByteString
+    { sign   :: KeyHash -> ByteString -> f Signature
     , getPublicKey :: KeyHash -> f PublicKey
     }
 
@@ -28,3 +31,6 @@ instance Exception ObjectNotFound
 
 newtype ParseError = ParseError String deriving (Show)
 instance Exception ParseError
+
+newtype UnknownEcdsaParams = UnknownEcdsaParams String deriving (Show)
+instance Exception UnknownEcdsaParams

@@ -15,10 +15,10 @@ import Data.ASN1.Types (ASN1(..), ASN1ConstructionType(..))
 import Data.ByteString (ByteString)
 import Data.ByteArray (pack, convert, cons)
 
+import Crypto.Types (CurveName(..))
 import Encoding (b58Check)
 import Hash (blake2b160, sha256)
 import Tezos.Constants (pkPrefix, pkhPrefix, skPrefix)
-import Tezos.Types (CurveName(..))
 
 
 -- TODO: Make these all understand the specific curve of the keys

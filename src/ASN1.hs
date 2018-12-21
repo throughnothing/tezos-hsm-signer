@@ -1,19 +1,22 @@
 module ASN1 where
 
+import Control.Arrow (left)
 import Crypto.Number.Serialize (i2osp, os2ip)
 import Crypto.PubKey.ECC.Types (getCurveByName, Curve, CurveName(..), Point(..))
 import Crypto.PubKey.ECC.ECDSA (PublicKey(..), PrivateKey(..))
-import Data.ByteArray (ByteArrayAccess(..), unpack, take, drop, index)
 import Data.ByteString (ByteString)
 
+import qualified Crypto.Types as CT
+import qualified Data.ByteArray as BA
 import qualified Data.ASN1.Types as AT
+import qualified Data.ASN1.BinaryEncoding as ABE
+import qualified Data.ASN1.Encoding as AE
 
 parsePublicKeyDER :: [AT.ASN1] -> [AT.ASN1] -> Either String PublicKey
-parsePublicKeyDER [AT.OID arr] [AT.OctetString bs] = 
-  (\c q -> PublicKey {public_curve = c, public_q = q})
-    <$> oidToCurve arr
+parsePublicKeyDER [AT.OID arr] [AT.OctetString bs] = buildKey
+    <$> (toCurve <$> ecparamsToCurveName arr)
     <*> parsePoint bs
--- | TODO: Support other curves + formats
+    where buildKey c q = PublicKey {public_curve = c, public_q = q}
 parsePublicKeyDER _ _ = Left "Unknown PubKey DER Format"
 
 parsePointDER :: [AT.ASN1] -> Either String Point
@@ -23,16 +26,32 @@ parsePoint :: ByteString -> Either String Point
 parsePoint ls
     -- | 0x04 means uncompressed, which is the only format we support atm
     -- | (https://tools.ietf.org/html/rfc5480#section-2.3.2)
-    | index ls 0 == 4 = Right $ go (Data.ByteArray.drop 1 ls)
-    | otherwise = Left "Point was not compressed"
+    | BA.index ls 0 == 4 = Right $ go (BA.drop 1 ls)
+    | otherwise = Left "Point was not uncompressed (no leading 0x04)"
     where
-    go xs = let len = Data.ByteArray.length xs `div` 2
-        in Point
-            (os2ip (Data.ByteArray.take len xs))
-            (os2ip (Data.ByteArray.drop len xs))
+    go xs = Point (os2ip (BA.take len xs)) (os2ip (BA.drop len xs))
+        where len = BA.length xs `div` 2
 
--- | TODO: Add more curve support.  Only parsing secp256r1 atm
-oidToCurve :: [Integer] -> Either String Curve
-oidToCurve [1,2,840,10045,3,1,7] = Right $ getCurveByName SEC_p256r1
-oidToCurve _ = Left "No Curve Found"
+curveFromEcParams :: ByteString -> Either String CT.CurveName
+curveFromEcParams bs = curveOf =<< left show (AE.decodeASN1' ABE.DER bs)
+        where
+            curveOf [AT.OID arr] = ecparamsToCurveName arr
+            curveOf            _ = Left "Couldn't parse EC Params"
+
+-- | These come from: https://tools.ietf.org/html/rfc5480#section-2.1.1.1
+-- | Can generate these arrays in DER b64 format from: `openssl ecparam -name secp256k1`
+-- |   - https://wiki.openssl.org/index.php/Command_Line_Elliptic_Curve_Operations
+-- |
+-- | And then decode this base64 encoded string using the following haskell:
+-- |   - decodeASN1' DER $ decodeLenient $ pack "BgUrgQQACg=="`
+-- |
+-- |   - http://www.secg.org/SEC2-Ver-1.0.pdf (for secp256k1 (?))
+-- |
+ecparamsToCurveName :: [Integer] -> Either String CT.CurveName
+ecparamsToCurveName [1,2,840,10045,3,1,7] = Right CT.P256
+ecparamsToCurveName        [1,3,132,0,10] = Right CT.SECP256K1
+ecparamsToCurveName                     _ = Left "No Known Curve Found"
   
+toCurve :: CT.CurveName -> Curve
+toCurve CT.P256 = getCurveByName SEC_p256r1
+toCurve CT.SECP256K1 = getCurveByName SEC_p256k1

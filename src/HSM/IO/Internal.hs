@@ -12,8 +12,10 @@ import Control.Exception (bracket, Exception, throw)
 import Foreign.C.Types (CULong)
 import Unsafe.Coerce (unsafeCoerce)
 
+import Crypto.Types (CurveName(..))
 import HSM.Types
 import Tezos.Keys (pubKey, pubKeyHash)
+import Tezos.Types (Signature(..))
 
 import qualified ASN1
 import qualified Config as C
@@ -45,15 +47,18 @@ withLibrary :: LibraryPath -> (PKCS.Library -> IO a ) -> IO a
 withLibrary l = bracket (PKCS.loadLibrary l) PKCS.releaseLibrary
 
 findPrivKey :: String -> HSMSession PKCS.Object
-findPrivKey name = find1Obj [PKCS.Class PKCS.PrivateKey, PKCS.Label name]
+findPrivKey name = find1Obj [PKCS.Class PKCS.PrivateKey, PKCS.Label name, PKCS.Token True]
 
 findPubKey :: String -> HSMSession PKCS.Object
-findPubKey name = find1Obj [PKCS.Class PKCS.PublicKey, PKCS.Label name]
+findPubKey name = find1Obj [PKCS.Class PKCS.PublicKey, PKCS.Label name, PKCS.Token True]
 
-signHsm :: String -> ByteString -> HSMSession ByteString
-signHsm key dat = do
-  privKey <- findPrivKey key
-  liftIO $ PKCS.sign (PKCS.simpleMech PKCS.Ecdsa) privKey dat Nothing
+signHsm :: String -> ByteString -> HSMSession Signature
+signHsm keyName dat = do
+  privKey <- findPrivKey keyName
+  curve <- ecdsaCurve privKey
+  sig <- liftIO $ PKCS.sign (PKCS.simpleMech PKCS.Ecdsa) privKey dat Nothing
+  pure $ Signature curve sig
+
 
 find1Obj :: [PKCS.Attribute] -> HSMSession PKCS.Object
 find1Obj attrs = do
@@ -62,6 +67,13 @@ find1Obj attrs = do
   where
     go (x:xs) = pure x
     go [] = pure $ throw $ ObjectNotFound (show attrs)
+
+ecdsaCurve :: PKCS.Object -> HSMSession CurveName
+ecdsaCurve obj = liftIO $ do
+    ecdsaParamsBS <- PKCS.getEcdsaParams obj
+    case ASN1.curveFromEcParams ecdsaParamsBS of
+      Left e -> pure $ throw $ UnknownEcdsaParams e
+      Right a -> pure a
 
 runSessionRO :: PKCS.Library -> SlotId -> UserPin -> HSMSession a -> IO a
 runSessionRO = runSession' False
@@ -91,6 +103,7 @@ parseTZKey name = do
         Left e -> pure $ throw $ ParseError e
         Right x -> pure (pubKeyHash x, pubKey x)
 
+-- | TODO: make this more generic to support creating multiple curves
 generatesecp421r1Key :: String -> HSMSession (PKCS.Object, PKCS.Object)
 generatesecp421r1Key name = do
     sess <- ask
@@ -100,6 +113,7 @@ generatesecp421r1Key name = do
         [PKCS.Token True, PKCS.Label name]
         sess
 
+-- | TODO: make this more generic to support creating multiple curves
 -- | Specified in 2.3.3 of:
 -- | http://docs.oasis-open.org/pkcs11/pkcs11-curr/v2.40/cs01/pkcs11-curr-v2.40-cs01.html
 secp521r1EcdsaParams :: ByteString

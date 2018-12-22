@@ -4,6 +4,6 @@ hsm:
   libPath: /usr/local/lib/softhsm/libsofthsm2.so
 keys:
 - keyName: test1
-  publicKeyHash: tz3fNgiRyEZeXD5eh6rEocSp8PBzii2w38Ku
-  publicKey: p2pk68PLuTsD7erc7VFwabUcvDSk4GuDTh5n5gpJgi5GPXb1CQk5vY8
+  hsmSlot: 1165926823
+- keyName: Test Key LOL 2
   hsmSlot: 1165926823

@@ -12,4 +12,4 @@ main = do
   pin <- Pin.getPin "HSM User Pin:"
   let lib = C.libPath (C.hsm config)
       port = C.port (C.server config) in
-    HSMIO.withHsmIO lib pin (C.findKeyByHash config) (Web.serveSignerAPI port)
+    HSMIO.withHsmIO lib pin (C.keys config) (Web.serveSignerAPI port)

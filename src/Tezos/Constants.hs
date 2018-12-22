@@ -12,7 +12,7 @@ import Tezos.Types (Prefix(..))
 import Crypto.Types (CurveName(..))
 
 -- | All Prefixes in this file taken from:
--- |https://gitlab.com/tezos/tezos/blob/master/src/lib_crypto/base58.ml
+-- | https://gitlab.com/tezos/tezos/blob/master/src/lib_crypto/base58.ml
 
 sigPrefix :: CurveName -> ByteString
 sigPrefix P256 = _p [54, 240, 44, 52]

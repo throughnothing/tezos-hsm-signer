@@ -15,8 +15,6 @@ instance FromJSON HsmConfig
 
 data KeysConfig = KeysConfig
   { keyName :: String
-  , publicKeyHash :: String
-  , publicKey :: String
   , hsmSlot :: Int
   } deriving (Show, Generic)
 instance FromJSON KeysConfig
@@ -33,6 +31,3 @@ readConfig f = decodeFileEither f >>= handle
   where
     handle (Left e) = pure $ throw e
     handle (Right c) = pure c
-
-findKeyByHash :: Config -> String -> Maybe KeysConfig
-findKeyByHash xs h = find (\x -> h == publicKeyHash x) (keys xs)

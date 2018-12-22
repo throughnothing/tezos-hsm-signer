@@ -1,6 +1,7 @@
 module HSM.IO.Internal where
 
 import Control.Arrow (left)
+import Control.Exception (try, bracket, Exception, throw)
 import Control.Monad (join)
 import Control.Monad.IO.Class (liftIO)
 import Control.Monad.Reader (ReaderT(..), MonadReader(..))
@@ -8,40 +9,103 @@ import Data.ASN1.Encoding (encodeASN1', decodeASN1')
 import Data.ASN1.BinaryEncoding (DER(..))
 import Data.ASN1.Types (ASN1(..))
 import Data.ByteString(ByteString)
-import Control.Exception (bracket, Exception, throw)
+import Data.Map.Strict (Map, empty, insert, lookup)
+import Data.Maybe (fromMaybe)
 import Foreign.C.Types (CULong)
 import Unsafe.Coerce (unsafeCoerce)
 
-import Crypto.Types (CurveName(..))
+import Crypto.Types (CurveName(..), Signature(..), PublicKey(..))
 import HSM.Types
-import Tezos.Keys (pubKey, pubKeyHash)
-import Tezos.Types (Signature(..))
+import Tezos.Encoding (pubKeyStr, pubKeyHashStr)
 
 import qualified ASN1
 import qualified Config as C
 import qualified Data.ByteString.Char8 as DBC
 import qualified System.Crypto.Pkcs11 as PKCS
 
+type LibraryPath = String
+type UserPin = String
+type SlotId  = Int
+
 type HSMSession = ReaderT PKCS.Session IO
 
--- | TODO: Verify the config against HSM on boot
-withHsmIO :: LibraryPath -> UserPin -> (KeyHash -> Maybe C.KeysConfig) -> (HSM IO -> IO a) -> IO a
-withHsmIO libPath pin find f = withLibrary libPath (f . _hsm)
+data HSMKey = HSMKey
+  { name :: String
+  , publicKeyHashStr :: String
+  , publicKeyStr :: String
+  , publicKey :: PublicKey
+  , slot :: Int
+  } deriving (Show)
+
+withHsmIO :: LibraryPath -> UserPin -> [C.KeysConfig] -> (HSM IO -> IO a) -> IO a
+withHsmIO libPath pin cks f = withLibrary libPath go
   where
-    _hsm :: PKCS.Library -> HSM IO
-    _hsm l = HSM { sign = _sign l , getPublicKey = _getPublicKey l }
+    go lib = do
+      keys <- findConfigKeys lib pin cks
+      putStrLn $ "HSM Keys Found: " ++ show keys
+      f $ mkHsm lib pin keys
 
-    _sign lib keyHash dat = runSessionRO lib (getSlot keyHash) pin $
-      signHsm (getName keyHash) dat
+mkHsm :: PKCS.Library -> UserPin -> Map String HSMKey -> HSM IO
+mkHsm l pin keysMap = HSM { sign = _sign l , getPublicKey = _getPublicKey l }
+  where
+    _getPublicKey lib keyHash = orNotFound $ pure . publicKey <$> getKey keyHash
 
-    _getPublicKey lib keyHash = runSessionRO lib (getSlot keyHash) pin $
-       show <$> findPubKey (getName keyHash)
+    _sign lib keyHash dat = orNotFound go
+      where
+        go = runSessionRO lib pin <$> slotM <*> (signHsm dat <$> keyM)
+        slotM = getSlot keyHash
+        keyM = getName keyHash
 
-    getName :: KeyHash -> String
-    getName kh = maybe "" C.keyName (find kh)
 
-    getSlot :: KeyHash -> Int
-    getSlot kh = maybe 0 C.hsmSlot (find kh)
+    getKey :: KeyHash -> Maybe HSMKey
+    getKey kh = Data.Map.Strict.lookup kh keysMap
+
+    getName :: KeyHash -> Maybe String
+    getName kh = name <$> getKey kh
+
+    getSlot :: KeyHash -> Maybe Int
+    getSlot kh = slot <$> getKey kh
+
+
+orNotFound :: Maybe (IO a) -> IO a
+orNotFound Nothing = throw $ ObjectNotFound "Key Not Found."
+orNotFound (Just x) = x
+
+-- | Loop through each key in the config file, and check that it exists
+-- | and can be properly parsed in the HSM.  Only return correctly parsed ones.
+findConfigKeys :: PKCS.Library -> UserPin -> [C.KeysConfig] -> IO (Map String HSMKey)
+findConfigKeys lib pin = foldr go (pure empty)
+    where
+      handleErr k e = putStrLn $ "Error finding (" ++ show k ++ ").  Ignoring." ++ e
+      go key mp = do
+        pkey <- runSessionRO lib pin slot $ getPubKey name
+        insert (pubKeyHashStr pkey) (hsmKey pkey) <$> mp
+        -- (hsmKey pkey:) <$> hks
+          where
+            name = C.keyName key
+            slot = C.hsmSlot key
+            hsmKey k = HSMKey
+              { name = name
+              , publicKeyHashStr = pubKeyHashStr k
+              , publicKeyStr = pubKeyStr k
+              , publicKey = k
+              , slot = slot
+              }
+
+
+getPubKey :: String -> HSMSession PublicKey
+getPubKey name = do
+  key <- findPubKey name
+  liftIO $ do
+    ecdsaParamsBS <- PKCS.getEcdsaParams key
+    pointBS <- PKCS.getEcPoint key
+    case join $ left show $
+      ASN1.parsePublicKeyDER
+          <$> decodeASN1' DER ecdsaParamsBS
+          <*> decodeASN1' DER pointBS
+      of
+        Left e -> pure $ throw $ ParseError e
+        Right pk -> pure pk
 
 
 withLibrary :: LibraryPath -> (PKCS.Library -> IO a ) -> IO a
@@ -53,8 +117,8 @@ findPrivKey name = find1Obj [PKCS.Class PKCS.PrivateKey, PKCS.Label name, PKCS.T
 findPubKey :: String -> HSMSession PKCS.Object
 findPubKey name = find1Obj [PKCS.Class PKCS.PublicKey, PKCS.Label name, PKCS.Token True]
 
-signHsm :: String -> ByteString -> HSMSession Signature
-signHsm keyName dat = do
+signHsm :: ByteString -> String -> HSMSession Signature
+signHsm dat keyName = do
   privKey <- findPrivKey keyName
   curve <- ecdsaCurve privKey
   sig <- liftIO $ PKCS.sign (PKCS.simpleMech PKCS.Ecdsa) privKey dat Nothing
@@ -76,35 +140,20 @@ ecdsaCurve obj = liftIO $ do
       Left e -> pure $ throw $ UnknownEcdsaParams e
       Right a -> pure a
 
-runSessionRO :: PKCS.Library -> SlotId -> UserPin -> HSMSession a -> IO a
+runSessionRO :: PKCS.Library -> UserPin -> SlotId -> HSMSession a -> IO a
 runSessionRO = runSession' False
 
-runSessionRW :: PKCS.Library -> SlotId -> UserPin -> HSMSession a -> IO a
+runSessionRW :: PKCS.Library -> UserPin -> SlotId -> HSMSession a -> IO a
 runSessionRW = runSession' True
 
-runSession' :: Bool -> PKCS.Library -> SlotId -> UserPin -> HSMSession a -> IO a
-runSession' writeable lib slotId pin hsms =
+runSession' :: Bool -> PKCS.Library -> UserPin -> SlotId -> HSMSession a -> IO a
+runSession' writeable lib pin slotId hsms =
   PKCS.withSession lib (unsafeCoerce slotId) writeable
       (\sess -> bracket
           (PKCS.login sess PKCS.User (DBC.pack pin))
           (const $ PKCS.logout sess)
           (pure $ runReaderT hsms sess))
 
-parseTZKey :: String -> HSMSession (ByteString, ByteString)
-parseTZKey name = do
-  key <- findPubKey name
-  liftIO $ do
-    ecdsaParamsBS <- PKCS.getEcdsaParams key
-    pointBS <- PKCS.getEcPoint key
-    case join $ left show $
-      ASN1.parsePublicKeyDER
-          <$> decodeASN1' DER ecdsaParamsBS
-          <*> decodeASN1' DER pointBS
-      of
-        Left e -> pure $ throw $ ParseError e
-        Right x -> pure (pubKeyHash x, pubKey x)
-
--- | TODO: make this more generic to support creating multiple curves
 generateKeyPair :: CurveName -> String -> HSMSession (PKCS.Object, PKCS.Object)
 generateKeyPair curve name = do
     sess <- ask
@@ -113,5 +162,4 @@ generateKeyPair curve name = do
         [PKCS.Token True, PKCS.EcdsaParams ecdsaParams, PKCS.Label name]
         [PKCS.Token True, PKCS.Label name]
         sess
-
     where ecdsaParams = encodeASN1' DER [OID (ASN1.curveToEcParams curve)]

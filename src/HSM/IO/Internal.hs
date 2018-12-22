@@ -9,11 +9,12 @@ import Data.ASN1.Encoding (encodeASN1', decodeASN1')
 import Data.ASN1.BinaryEncoding (DER(..))
 import Data.ASN1.Types (ASN1(..))
 import Data.ByteString(ByteString)
+import Data.Map.Strict (Map, empty, insert, lookup)
 import Data.Maybe (fromMaybe)
 import Foreign.C.Types (CULong)
 import Unsafe.Coerce (unsafeCoerce)
 
-import Crypto.Types (CurveName(..), Signature(..), PublicKey)
+import Crypto.Types (CurveName(..), Signature(..), PublicKey(..))
 import HSM.Types
 import Tezos.Encoding (pubKeyStr, pubKeyHashStr)
 
@@ -28,19 +29,13 @@ type SlotId  = Int
 
 type HSMSession = ReaderT PKCS.Session IO
 
--- | TODO: Make this (Map name => HSMKey) instead of a list
 data HSMKey = HSMKey
   { name :: String
-  , pkh :: String
-  , pk :: String
+  , publicKeyHashStr :: String
+  , publicKeyStr :: String
+  , publicKey :: PublicKey
   , slot :: Int
   } deriving (Show)
-
--- | TODO: Use something smarter than fold here
-findByPkh :: String -> [HSMKey] -> Maybe HSMKey
-findByPkh h = foldr find Nothing
-  where find k r = if pkh k == h then Just k else r
-
 
 withHsmIO :: LibraryPath -> UserPin -> [C.KeysConfig] -> (HSM IO -> IO a) -> IO a
 withHsmIO libPath pin cks f = withLibrary libPath go
@@ -50,23 +45,20 @@ withHsmIO libPath pin cks f = withLibrary libPath go
       putStrLn $ "HSM Keys Found: " ++ show keys
       f $ mkHsm lib pin keys
 
-mkHsm :: PKCS.Library -> UserPin -> [HSMKey] -> HSM IO
-mkHsm l pin keys = HSM { sign = _sign l , getPublicKey = _getPublicKey l }
+mkHsm :: PKCS.Library -> UserPin -> Map String HSMKey -> HSM IO
+mkHsm l pin keysMap = HSM { sign = _sign l , getPublicKey = _getPublicKey l }
   where
+    _getPublicKey lib keyHash = orNotFound $ pure . publicKey <$> getKey keyHash
+
     _sign lib keyHash dat = orNotFound go
       where
         go = runSessionRO lib pin <$> slotM <*> (signHsm dat <$> keyM)
         slotM = getSlot keyHash
         keyM = getName keyHash
 
-    _getPublicKey lib keyHash = orNotFound go
-      where
-        go = runSessionRO lib pin <$> slotM <*> (getPubKey <$> keyM)
-        slotM = getSlot keyHash
-        keyM = getName keyHash
 
     getKey :: KeyHash -> Maybe HSMKey
-    getKey kh = findByPkh kh keys
+    getKey kh = Data.Map.Strict.lookup kh keysMap
 
     getName :: KeyHash -> Maybe String
     getName kh = name <$> getKey kh
@@ -81,20 +73,23 @@ orNotFound (Just x) = x
 
 -- | Loop through each key in the config file, and check that it exists
 -- | and can be properly parsed in the HSM.  Only return correctly parsed ones.
-findConfigKeys :: PKCS.Library -> UserPin -> [C.KeysConfig] -> IO [HSMKey]
-findConfigKeys lib pin = foldr go (pure [])
+findConfigKeys :: PKCS.Library -> UserPin -> [C.KeysConfig] -> IO (Map String HSMKey)
+findConfigKeys lib pin = foldr go (pure empty)
     where
       handleErr k e = putStrLn $ "Error finding (" ++ show k ++ ").  Ignoring." ++ e
-      go key hks = do
-        -- | TODO: find a way to do something on any error (catch)
-        pkey <- runSessionRO lib pin (C.hsmSlot key) $ getPubKey (C.keyName key)
-        (hsmKey pkey:) <$> hks
+      go key mp = do
+        pkey <- runSessionRO lib pin slot $ getPubKey name
+        insert (pubKeyHashStr pkey) (hsmKey pkey) <$> mp
+        -- (hsmKey pkey:) <$> hks
           where
+            name = C.keyName key
+            slot = C.hsmSlot key
             hsmKey k = HSMKey
-              { name = C.keyName key
-              , pkh = pubKeyHashStr k
-              , pk = pubKeyStr k
-              , slot = C.hsmSlot key
+              { name = name
+              , publicKeyHashStr = pubKeyHashStr k
+              , publicKeyStr = pubKeyStr k
+              , publicKey = k
+              , slot = slot
               }
 
 

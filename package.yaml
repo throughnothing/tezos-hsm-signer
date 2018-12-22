@@ -39,6 +39,7 @@ dependencies:
 - memory
 - mtl
 - text
+- containers
 
 library:
   source-dirs: src

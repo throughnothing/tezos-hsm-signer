@@ -8,6 +8,7 @@ import Data.ASN1.BinaryEncoding (DER(..))
 import Data.ASN1.Encoding (encodeASN1')
 import Data.ASN1.Types (ASN1(..), ASN1ConstructionType(..))
 import Data.ByteString (ByteString)
+import Data.ByteString.Char8 (unpack)
 import Data.ByteArray (pack, convert, cons)
 
 import Crypto.Types (CurveName(..), PublicKey(..))
@@ -36,3 +37,9 @@ pubKeyCompressed (PublicKey c CE.PublicKey {CE.public_q = Point x y})
 -- | Serialize correctly based on the curve, instead of hard-coding
 privKey :: CE.PrivateKey -> ByteString
 privKey pk@CE.PrivateKey {CE.private_d = d} = b58Check (skPrefix P256) $ i2osp d
+
+pubKeyStr :: PublicKey -> String
+pubKeyStr = unpack . pubKey
+
+pubKeyHashStr :: PublicKey -> String
+pubKeyHashStr = unpack . pubKeyHash

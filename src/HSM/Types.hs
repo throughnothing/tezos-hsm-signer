@@ -16,6 +16,9 @@ data HSM f = HSM
 
 type KeyHash = String
 
+
+-- | Errors 
+
 newtype ObjectNotFound = ObjectNotFound String deriving (Show)
 instance Exception ObjectNotFound
 

@@ -17,7 +17,7 @@ import System.Posix.Process (exitImmediately)
 import System.Exit (ExitCode(..))
 
 import Crypto.Types (PublicKey)
-import Tezos.Encoding (pubKey)
+import Tezos.Encoding (pubKeyStr)
 import Tezos.Operations (sign)
 import Tezos.Types (mkTzCmd, TzCmd)
 
@@ -35,7 +35,7 @@ newtype SignatureRes = SignatureRes { signature :: String } deriving (Show, Gene
 instance FromJSON SignatureRes
 instance ToJSON SignatureRes
 
-newtype PublicKeyRes = PublicKeyRes String deriving (Show, Generic)
+newtype PublicKeyRes = PublicKeyRes { public_key :: String } deriving (Show, Generic)
 instance FromJSON PublicKeyRes
 instance ToJSON PublicKeyRes
 
@@ -65,7 +65,7 @@ server hsm = authorizedKeys
       pubKeyE <- liftIO $ try $ HSM.getPublicKey hsm hash
       case pubKeyE of
         Left (HSM.ObjectNotFound _) -> throwError err404
-        Right pk -> return $ (PublicKeyRes . unpack . pubKey) pk
+        Right pk -> return $ PublicKeyRes { public_key = pubKeyStr pk }
 
     signMessage :: String -> SignatureReq -> Handler SignatureRes
     signMessage hash (SignatureReq tzcmd) = do

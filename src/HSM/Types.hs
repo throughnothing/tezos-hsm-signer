@@ -10,7 +10,6 @@ import qualified System.Crypto.Pkcs11 as PKCS
 -- | The main data type for HSM Interactions
 data HSM f = HSM
     { sign   :: KeyHash -> ByteString -> f Signature
-    -- | TODO: Fix what this returns, and refactor how it works
     , getPublicKey :: KeyHash -> f PublicKey
     }
 

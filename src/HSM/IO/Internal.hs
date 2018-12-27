@@ -76,11 +76,9 @@ orNotFound (Just x) = x
 findConfigKeys :: PKCS.Library -> UserPin -> [C.KeysConfig] -> IO (Map String HSMKey)
 findConfigKeys lib pin = foldr go (pure empty)
     where
-      handleErr k e = putStrLn $ "Error finding (" ++ show k ++ ").  Ignoring." ++ e
       go key mp = do
         pkey <- runSessionRO lib pin slot $ getPubKey name
         insert (pubKeyHashStr pkey) (hsmKey pkey) <$> mp
-        -- (hsmKey pkey:) <$> hks
           where
             name = C.keyName key
             slot = C.hsmSlot key

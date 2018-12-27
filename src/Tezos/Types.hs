@@ -7,7 +7,7 @@ module Tezos.Types
   , mkTzCmdFromStr
   , toBS
   , toStr
-  )where
+  ) where
 
 import Data.Aeson (FromJSON(..), ToJSON(..), Value(..))
 import Data.ByteString (ByteString, unpack, pack)

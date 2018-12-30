@@ -3,9 +3,7 @@ module Config where
 
 import Control.Exception (throw)
 import Data.Yaml (decodeFileEither, FromJSON)
-import Data.List (find)
 import GHC.Generics (Generic)
-import Foreign.C.Types (CULong)
 
 newtype ServerConfig = ServerConfig { port :: Int } deriving (Show, Generic)
 instance FromJSON ServerConfig

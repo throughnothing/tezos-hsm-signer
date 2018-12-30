@@ -9,19 +9,18 @@ import Control.Monad.IO.Class (liftIO)
 import Data.Aeson (FromJSON, ToJSON)
 import GHC.Generics (Generic)
 import Servant
-import Servant.API
+import Servant.API ()
 import Network.Wai
 import Network.Wai.Handler.Warp
-import Data.ByteString.Char8 (pack, unpack, ByteString)
+import Data.ByteString.Char8 (unpack)
 import System.Posix.Process (exitImmediately)
 import System.Exit (ExitCode(..))
 
-import Crypto.Types (PublicKey)
+import Crypto.Types ()
 import Tezos.Encoding (pubKeyStr)
 import Tezos.Operations (sign)
-import Tezos.Types (mkTzCmd, TzCmd)
+import Tezos.Types (TzCmd)
 
-import qualified Config as C
 import qualified HSM
 
 

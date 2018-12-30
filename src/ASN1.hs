@@ -1,9 +1,9 @@
 module ASN1 where
 
 import Control.Arrow (left)
-import Crypto.Number.Serialize (i2osp, os2ip)
+import Crypto.Number.Serialize (os2ip)
 import Crypto.PubKey.ECC.Types (getCurveByName, Curve, CurveName(..), Point(..))
-import Crypto.PubKey.ECC.ECDSA (PublicKey(..), PrivateKey(..))
+import Crypto.PubKey.ECC.ECDSA (PublicKey(..))
 import Data.ByteString (ByteString)
 
 import qualified Crypto.Types as CT
@@ -22,6 +22,7 @@ parsePublicKeyDER _ _ = Left "Unknown PubKey DER Format"
 
 parsePointDER :: [AT.ASN1] -> Either String Point
 parsePointDER [AT.OctetString bs] = parsePoint bs
+parsePointDER _  = Left "Unknown DER Point Type"
 
 parsePoint :: ByteString -> Either String Point
 parsePoint ls
@@ -56,7 +57,7 @@ ecParamsToCurveName                     _ = Left "No Known Curve Found"
 curveToEcParams :: Num a => CT.CurveName -> [a]
 curveToEcParams CT.P256      = [1,2,840,10045,3,1,7]
 curveToEcParams CT.SECP256K1 = [1,3,132,0,10]
-  
+
 toCurve :: CT.CurveName -> Curve
 toCurve CT.P256 = getCurveByName SEC_p256r1
 toCurve CT.SECP256K1 = getCurveByName SEC_p256k1

@@ -12,7 +12,6 @@ module Tezos.Types
 import Data.Aeson (FromJSON(..), ToJSON(..), Value(..))
 import Data.ByteString (ByteString, unpack, pack)
 import Data.Char (digitToInt, intToDigit, isHexDigit)
-import Data.Maybe (fromMaybe)
 import Data.String (fromString)
 import GHC.Generics (Generic)
 
@@ -28,6 +27,7 @@ instance FromJSON TzCmd where
     case mkTzCmdFromText s of
       Nothing -> fail "Invalid Command String"
       Just tz -> pure tz
+  parseJSON _ = fail "Invalid Command String"
 
 instance ToJSON TzCmd where
     toJSON (TzCmd bs) = String $ (fromString . BSC.unpack) bs
@@ -35,7 +35,7 @@ instance ToJSON TzCmd where
 mkTzCmd :: ByteString -> Maybe TzCmd
 mkTzCmd i = case first of
   [] -> Nothing
-  (x:xs) -> if x == 1 || x == 2
+  (x:_) -> if x == 1 || x == 2
     then Just $ TzCmd i
     else Nothing
   where first = Data.ByteString.unpack (BA.take 1 i)
@@ -53,5 +53,5 @@ toBS :: TzCmd -> ByteString
 toBS (TzCmd i) = i
 
 toStr :: TzCmd -> String
-toStr t@(TzCmd i) = intToDigit . fromIntegral <$> str
-  where str = Data.ByteString.unpack $ toBS t
+toStr (TzCmd bs) = intToDigit . fromIntegral <$> str
+  where str = Data.ByteString.unpack bs

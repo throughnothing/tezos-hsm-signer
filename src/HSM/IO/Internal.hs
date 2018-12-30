@@ -1,7 +1,7 @@
 module HSM.IO.Internal where
 
 import Control.Arrow (left)
-import Control.Exception (try, bracket, Exception, throw)
+import Control.Exception (bracket, throw)
 import Control.Monad (join)
 import Control.Monad.IO.Class (liftIO)
 import Control.Monad.Reader (ReaderT(..), MonadReader(..))
@@ -10,8 +10,6 @@ import Data.ASN1.BinaryEncoding (DER(..))
 import Data.ASN1.Types (ASN1(..))
 import Data.ByteString(ByteString)
 import Data.Map.Strict (Map, empty, insert, lookup)
-import Data.Maybe (fromMaybe)
-import Foreign.C.Types (CULong)
 import Unsafe.Coerce (unsafeCoerce)
 
 import Crypto.Types (CurveName(..), Signature(..), PublicKey(..))
@@ -46,9 +44,9 @@ withHsmIO libPath pin cks f = withLibrary libPath go
       f $ mkHsm lib pin keys
 
 mkHsm :: PKCS.Library -> UserPin -> Map String HSMKey -> HSM IO
-mkHsm l pin keysMap = HSM { sign = _sign l , getPublicKey = _getPublicKey l }
+mkHsm l pin keysMap = HSM { sign = _sign l , getPublicKey = _getPublicKey }
   where
-    _getPublicKey lib keyHash = orNotFound $ pure . publicKey <$> getKey keyHash
+    _getPublicKey keyHash = orNotFound $ pure . publicKey <$> getKey keyHash
 
     _sign lib keyHash dat = orNotFound go
       where
@@ -128,7 +126,7 @@ find1Obj attrs = do
   sess <- ask
   liftIO $ PKCS.findObjects sess attrs >>= go
   where
-    go (x:xs) = pure x
+    go (x:_) = pure x
     go [] = pure $ throw $ ObjectNotFound (show attrs)
 
 ecdsaCurve :: PKCS.Object -> HSMSession CurveName

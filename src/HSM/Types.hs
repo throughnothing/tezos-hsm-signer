@@ -3,9 +3,7 @@ module HSM.Types where
 import Control.Exception (Exception)
 import Data.ByteString.Char8 (ByteString)
 
-import Crypto.Types (CurveName, Signature, PublicKey)
-
-import qualified System.Crypto.Pkcs11 as PKCS
+import Crypto.Types (Signature, PublicKey)
 
 -- | The main data type for HSM Interactions
 data HSM f = HSM

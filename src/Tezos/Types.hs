@@ -44,10 +44,10 @@ mkTzCmd i = case first of
 
 mkTzCmdFromStr :: String -> Maybe TzCmd
 mkTzCmdFromStr i
-  | (snd enc) == "" && i /= "" = Just . TzCmd $ fst enc
+  | (snd dec) == "" && i /= "" = Just . TzCmd $ fst dec
   | otherwise = Nothing
   where
-    enc = B16.decode $ BSC.pack i
+    dec = B16.decode $ BSC.pack i
 
 mkTzCmdFromText :: DT.Text -> Maybe TzCmd
 mkTzCmdFromText t = mkTzCmdFromStr $ DT.unpack t

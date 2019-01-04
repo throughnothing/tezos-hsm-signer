@@ -52,12 +52,17 @@ curveFromEcParams bs = curveOf =<< left show (AE.decodeASN1' ABE.DER bs)
 ecParamsToCurveName :: Num a => Eq a => [a] -> Either String CT.CurveName
 ecParamsToCurveName [1,2,840,10045,3,1,7] = Right CT.P256
 ecParamsToCurveName        [1,3,132,0,10] = Right CT.SECP256K1
+-- | https://tools.ietf.org/html/draft-ietf-curdle-pkix-10
+ecParamsToCurveName        [1,3,101, 112] = Right CT.ED25519
 ecParamsToCurveName                     _ = Left "No Known Curve Found"
 
 curveToEcParams :: Num a => CT.CurveName -> [a]
 curveToEcParams CT.P256      = [1,2,840,10045,3,1,7]
 curveToEcParams CT.SECP256K1 = [1,3,132,0,10]
+curveToEcParams CT.ED25519   = [1,3,101,110]
 
 toCurve :: CT.CurveName -> Curve
 toCurve CT.P256 = getCurveByName SEC_p256r1
 toCurve CT.SECP256K1 = getCurveByName SEC_p256k1
+-- | ED25519 is different, doesn't have a proper CurveName here
+-- toCurve CT.ED25519 = getCurveByName

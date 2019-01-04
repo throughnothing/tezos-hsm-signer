@@ -2,11 +2,14 @@
 {-# LANGUAGE TypeOperators #-}
 {-#LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 module Web (serveSignerAPI) where
 
 import Control.Exception (try)
 import Control.Monad.IO.Class (liftIO)
-import Data.Aeson (FromJSON, ToJSON)
+import Data.Aeson (FromJSON, ToJSON, Value)
+import Data.Aeson.Types (emptyObject)
 import GHC.Generics (Generic)
 import Servant
 import Servant.API ()
@@ -21,7 +24,22 @@ import Tezos.Encoding (pubKeyStr)
 import Tezos.Operations (sign)
 import Tezos.Types (TzCmd)
 
+
 import qualified HSM
+import qualified Network.HTTP.Media  as M
+
+
+-- | All this is a hack for application/json content-type (without charset) that tezos needs
+data JSONSimple
+
+instance Accept JSONSimple where
+  contentType _ = "application" M.// "json"
+
+instance ToJSON t => MimeRender JSONSimple t where
+  mimeRender _ = mimeRender (Proxy :: Proxy JSON)
+
+instance FromJSON t => MimeUnrender JSONSimple t where
+  mimeUnrender _ = mimeUnrender (Proxy :: Proxy JSON)
 
 
 -- | Request Types
@@ -40,10 +58,10 @@ instance ToJSON PublicKeyRes
 
 -- | API Type
 type SignerAPI =
-  "auhtorized_keys" :> Get '[JSON] String
-  :<|> "keys" :> Get '[PlainText, JSON] String
-  :<|> "keys" :> Capture "keyHash" String :> Get '[JSON] PublicKeyRes
-  :<|> "keys" :> Capture "keyHash" String :> ReqBody '[JSON] SignatureReq :> Post '[JSON] SignatureRes
+  "authorized_keys" :> Get '[JSONSimple] Value
+  :<|> "keys" :> Get '[JSONSimple] Value
+  :<|> "keys" :> Capture "keyHash" String :> Get '[JSONSimple] PublicKeyRes
+  :<|> "keys" :> Capture "keyHash" String :> ReqBody '[JSON] SignatureReq :> Post '[JSONSimple] SignatureRes
   :<|> "lock" :> Get '[PlainText, JSON] String
 
 server :: HSM.HSM IO -> Server SignerAPI
@@ -53,11 +71,11 @@ server hsm = authorizedKeys
   :<|> signMessage
   :<|> lock
   where
-    authorizedKeys :: Handler String
-    authorizedKeys = return "{}"
+    authorizedKeys :: Handler Value
+    authorizedKeys = return emptyObject
 
-    keys :: Handler String
-    keys = return "{}"
+    keys :: Handler Value
+    keys = return emptyObject
 
     getPubKey :: String -> Handler PublicKeyRes
     getPubKey hash = do

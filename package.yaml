@@ -40,6 +40,8 @@ dependencies:
 - mtl
 - text
 - containers
+- http-media
+- base16-bytestring
 
 library:
   source-dirs: src

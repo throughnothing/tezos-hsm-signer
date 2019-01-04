@@ -4,7 +4,6 @@ This is a web service that reveals an API for signing messages with
 a key stored securely in an HSM module.  For testing, SoftHSM may be used.
 
 ## Testing with SoftHSM
-
 Initialize a token in a test SoftHSM environment.  This command
 will prompt you to set a Security Officer (SO) PIN and a user PIN.
 The User PIN will be needed by the application at runtime to log in
@@ -29,6 +28,11 @@ stack build
 # Run the web server
 stack exec server
 ```
+
+## Notes
+* ASN.1 PKCS8 Format: https://tools.ietf.org/html/rfc5208
+* ASN.1 EC Format: https://tools.ietf.org/html/rfc5915
+
 
 ## Resources
 * http://www.ocamlpro.com/2018/11/21/an-introduction-to-tezos-rpcs-signing-operations/

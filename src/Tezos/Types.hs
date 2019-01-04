@@ -6,7 +6,7 @@ module Tezos.Types
   , mkTzCmd
   , mkTzCmdFromStr
   , toBS
-  , toStr
+  , toHexStr
   ) where
 
 import Data.Aeson (FromJSON(..), ToJSON(..), Value(..))
@@ -15,6 +15,7 @@ import Data.Char (digitToInt, intToDigit, isHexDigit)
 import Data.String (fromString)
 import GHC.Generics (Generic)
 
+import qualified Data.ByteString.Base16 as B16
 import qualified Data.ByteString.Char8 as BSC
 import qualified Data.ByteArray as BA
 import qualified Data.Text as DT
@@ -34,17 +35,19 @@ instance ToJSON TzCmd where
 
 mkTzCmd :: ByteString -> Maybe TzCmd
 mkTzCmd i = case first of
-  [] -> Nothing
-  (x:_) -> if x == 1 || x == 2
+  []  -> Nothing
+  (x:_) ->
+    if (x == 1 || x == 2)
     then Just $ TzCmd i
     else Nothing
   where first = Data.ByteString.unpack (BA.take 1 i)
 
 mkTzCmdFromStr :: String -> Maybe TzCmd
-mkTzCmdFromStr i 
-  | isValidHex = mkTzCmd $  Data.ByteString.pack $ fromIntegral . digitToInt <$> i
+mkTzCmdFromStr i
+  | (snd enc) == "" && i /= "" = Just . TzCmd $ fst enc
   | otherwise = Nothing
-   where isValidHex = foldl (\a c -> a && isHexDigit c) True i
+  where
+    enc = B16.decode $ BSC.pack i
 
 mkTzCmdFromText :: DT.Text -> Maybe TzCmd
 mkTzCmdFromText t = mkTzCmdFromStr $ DT.unpack t
@@ -52,6 +55,5 @@ mkTzCmdFromText t = mkTzCmdFromStr $ DT.unpack t
 toBS :: TzCmd -> ByteString
 toBS (TzCmd i) = i
 
-toStr :: TzCmd -> String
-toStr (TzCmd bs) = intToDigit . fromIntegral <$> str
-  where str = Data.ByteString.unpack bs
+toHexStr :: TzCmd -> String
+toHexStr (TzCmd bs) = BSC.unpack $ B16.encode bs

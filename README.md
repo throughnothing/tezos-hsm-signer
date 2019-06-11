@@ -3,6 +3,9 @@
 This is a web service that reveals an API for signing messages with
 a key stored securely in an HSM module.  For testing, SoftHSM may be used.
 
+This signer is modeled largely after this
+[Python Remote Signer](https://github.com/tacoinfra/remote-signer)
+
 ## Testing with SoftHSM
 Initialize a token in a test SoftHSM environment.  This command
 will prompt you to set a Security Officer (SO) PIN and a user PIN.
